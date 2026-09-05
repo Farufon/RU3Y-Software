@@ -1,0 +1,227 @@
+LAUNCHING RU3Y RPM ————————————————
+
+
+Two separate terminals, streaming motor and rotor rpm for port and starboard nacelles. 
+
+The first line of the output (# t_s, edges, edges_per_s, motor_rpm, rotor_rpm) will serve as your CSV header.
+
+# t_s, edges, edges_per_s, motor_rpm, rotor_rpm
+0.050,120,2400.0,20571,2571
+0.100,118,2360.0,20228,2529
+etc.
+
+
+In window #1:
+
+For AUDJOB machine
+
+cd /Users/redfour/Documents/GitHub/RU3Y-WIKI/FT232H_RPM
+
+./rpm_reader_static --index 0 --poles 8 --ratio 8.0 --window 0.05
+
+./rpm_reader_static --index 0 --poles 8 --ratio 8.0 --window 0.05 | tee port_rpm.csv
+
+
+In window #2:
+
+cd /Users/redfour/Documents/GitHub/RU3Y-WIKI/FT232H_RPM
+
+./rpm_reader_static --index 1 --poles 8 --ratio 8.0 --window 0.05
+
+./rpm_reader_static --index 1 --poles 8 --ratio 8.0 --window 0.05 | tee starboard_rpm.csv
+
+
+--poles 8 = Align 470MX motor (8 poles).
+--ratio 8.0 = just motor speed.
+--index 0 = first FT232H device.
+--window 0.05 = 50 ms averaging window.
+
+edges should scale with throttle smoothly.
+motor_rpm should be ~20k+ at full throttle (check motor Kv × voltage).
+rotor_rpm should be ~2.4–2.6k at 8:1 ratio (matches typical head speeds).
+
+Sanity Checks
+Idle / Low Throttle: rotor_rpm should rise linearly with throttle.
+
+No Throttle: output should show near zero (a few stray edges OK).
+
+Full Throttle: compare motor_rpm ≈ Kv × Voltage and ensure rotor_rpm ≈ motor_rpm ÷ ratio.
+
+Example: 1800 Kv × 22.2 V ≈ 40k rpm (no load). With 8:1 gear, rotor ≈ 5k rpm max (likely lower under load).
+
+
+
+In terminal window, using applescript to launch two windows
+
+osascript -e 'tell app "Terminal" to do script "cd /Users/redfour/Documents/GitHub/RU3Y-WIKI/FT232H_RPM; ./rpm_reader_static --index 0 --poles 8 --ratio 8.0 --window 0.05 | tee port_rpm.csv"' \
+          -e 'tell app "Terminal" to do script "cd /Users/redfour/Documents/GitHub/RU3Y-WIKI/FT232H_RPM; ./rpm_reader_static --index 1 --poles 8 --ratio 8.0 --window 0.05 | tee starboard_rpm.csv"'
+
+
+
+Applescript
+
+osascript <<'OSA'
+tell application "Terminal"
+  do script "cd /Users/redfour/Documents/GitHub/RU3Y-WIKI/FT232H_RPM; ./rpm_reader_static --index 0 --poles 8 --ratio 8.0 --window 0.05 | tee port_rpm.csv"
+  do script "cd /Users/redfour/Documents/GitHub/RU3Y-WIKI/FT232H_RPM; ./rpm_reader_static --index 1 --poles 8 --ratio 8.0 --window 0.05 | tee starboard_rpm.csv"
+  activate
+end tell
+OSA
+
+
+
+LAUNCHING RU3Y CAMERA MATRIX ——————————————
+
+Using FFMPEG
+
+Assuming full install of ffmpeg
+
+Find camera addresses
+
+ffmpeg -f avfoundation -list_devices true -i ""
+
+facetime
+ffplay -f avfoundation -framerate 30 -video_size 640x480 -i "0:"
+
+standing camera
+ffplay -f avfoundation -framerate 30 -video_size 640x480 -i "1:"
+
+free board cam
+ffplay -f avfoundation -framerate 30 -video_size 640x480 -i "2:"
+
+port cam
+ffplay -f avfoundation -framerate 30 -video_size 640x480 -i "3:"
+
+starboard
+ffplay -f avfoundation -framerate 30 -video_size 640x480 -i "4:"
+
+
+Side by Side
+
+ffmpeg \
+-thread_queue_size 512 -f avfoundation -framerate 30 -video_size 1920x1080 -pix_fmt uyvy422 -i "0:" \
+-thread_queue_size 512 -f avfoundation -framerate 30 -video_size 1920x1080 -pix_fmt uyvy422 -i "1:" \
+-filter_complex "\
+[0:v]scale=1920:1080[cam1]; \
+[1:v]scale=1920:1080[cam2]; \
+[cam3][cam4]hstack=inputs=2[out]" \
+-map "[out]" -f rawvideo -pix_fmt uyvy422 - | ffplay -loglevel warning -f rawvideo -pixel_format uyvy422 -video_size 3840:1080 -
+
+ffmpeg \
+-thread_queue_size 512 -f avfoundation -framerate 30 -video_size 960x540 -pix_fmt uyvy422 -i "0:" \
+-thread_queue_size 512 -f avfoundation -framerate 30 -video_size 960x540 -pix_fmt uyvy422 -i "1:" \
+-filter_complex "\
+[0:v]scale=960:540 [cam1]; \
+[1:v]scale=960:540[cam2]; \
+[cam3][cam4]hstack=inputs=2[out]" \
+-map "[out]" -f rawvideo -pix_fmt uyvy422 - | ffplay -loglevel warning -f rawvideo -pixel_format uyvy422 -video_size 1920x1080 -
+
+
+
+
+
+ffmpeg -f avfoundation -list_devices true -i ""
+
+
+example reply:
+
+[AVFoundation input device @ 0x7fd...] AVFoundation video devices:
+[0] FaceTime HD Camera
+[1] USB Camera 1
+[2] USB Camera 2
+[3] USB Camera 3
+[4] USB Camera 4
+
+Note the index number.
+
+our ffmpeg routine will produce a live 2x2 grid and output the following:
+
+cam1_output.mp4
+cam2_output.mp4
+cam3_output.mp4
+cam4_output.mp4
+
+
+
+Start saving files
+
+# cam1
+ffmpeg -f avfoundation -framerate 30 -video_size 1920x1080 -i “0” -c:v libx264 -preset ultrafast -crf 23 cam1_output.mp4
+
+# cam2
+ffmpeg -f avfoundation -framerate 30 -video_size 1920x1080 -i “1” -c:v libx264 -preset ultrafast -crf 23 cam2_output.mp4
+
+# cam3
+ffmpeg -f avfoundation -framerate 30 -video_size 1920x1080 -i “2” -c:v libx264 -preset ultrafast -crf 23 cam3_output.mp4
+
+# cam4
+ffmpeg -f avfoundation -framerate 30 -video_size 1920x1080 -i "4" -c:v libx264 -preset ultrafast -crf 23 cam4_output.mp4
+
+
+Note the index number.
+
+Run this in separate terminal. 
+
+ffmpeg \
+-f avfoundation -framerate 30 -video_size 640x360 -i “0” \
+-f avfoundation -framerate 30 -video_size 640x360 -i “1” \
+-f avfoundation -framerate 30 -video_size 640x360 -i “2” \
+-f avfoundation -framerate 30 -video_size 640x360 -i "4" \
+-filter_complex "
+nullsrc=size=1280x720 [base];
+[0:v] setpts=PTS-STARTPTS, scale=640x360 [ul];
+[1:v] setpts=PTS-STARTPTS, scale=640x360 [ur];
+[2:v] setpts=PTS-STARTPTS, scale=640x360 [ll];
+[3:v] setpts=PTS-STARTPTS, scale=640x360 [lr];
+[base][ul] overlay=shortest=1 [tmp1];
+[tmp1][ur] overlay=shortest=1:x=640 [tmp2];
+[tmp2][ll] overlay=shortest=1:y=360 [tmp3];
+[tmp3][lr] overlay=shortest=1:x=640:y=360
+" -f sdl "Live Grid Preview"
+
+
+ffmpeg -f avfoundation -framerate 30 -video_size 1920x1080 -i "0:none" -c:v libx264 -preset ultrafast -crf 23 cam0.mp4 &
+
+
+ffmpeg -f avfoundation -framerate 30 -video_size 1920x1080 -i "1:none" -c:v libx264 -preset ultrafast -crf 23 cam1.mp4 &
+
+ffmpeg -f avfoundation -framerate 30 -video_size 1920x1080 -i "2:none" -c:v libx264 -preset ultrafast -crf 23 cam2.mp4 &
+
+
+ffmpeg -f avfoundation -framerate 30 -video_size 1920x1080 -i "4:none" -c:v libx264 -preset ultrafast -crf 23 cam4.mp4 &
+
+
+🔥 Important Considerations
+macOS AVFoundation does not allow multiple accesses to the same camera
+→ So if you're recording a camera and using it in the grid preview, one will fail.
+
+Fix:
+
+Use camera clones, hardware loop-out, or a workaround (like ffmpeg-powered RTSP clone or virtual webcam)
+
+✅ Workaround: Use 4 Recorded Streams + Grid Preview from Files
+Record 4 cameras to file (as shown above)
+
+Open a 5th process to build a live grid from those files as they're being written:
+
+bash
+Copy code
+ffmpeg \
+-i cam1_output.mp4 \
+-i cam2_output.mp4 \
+-i cam3_output.mp4 \
+-i cam4_output.mp4 \
+-filter_complex "
+nullsrc=size=1280x720 [base];
+[0:v] setpts=PTS-STARTPTS, scale=640x360 [ul];
+[1:v] setpts=PTS-STARTPTS, scale=640x360 [ur];
+[2:v] setpts=PTS-STARTPTS, scale=640x360 [ll];
+[3:v] setpts=PTS-STARTPTS, scale=640x360 [lr];
+[base][ul] overlay=shortest=1 [tmp1];
+[tmp1][ur] overlay=shortest=1:x=640 [tmp2];
+[tmp2][ll] overlay=shortest=1:y=360 [tmp3];
+[tmp3][lr] overlay=shortest=1:x=640:y=360
+" -f sdl "Live Grid Playback"
+
+This creates a live-ish playback composite — not quite zero latency, but works around camera access limitations.
+

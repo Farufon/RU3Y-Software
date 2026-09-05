@@ -1,0 +1,22 @@
+see this code in uorb.cpp:
+
+
+		ao_msg.control[0] = fcon_escR_send;	// labelled main-1	PWM_MAIN_DIS1
+		ao_msg.control[1] = fcon.channel_n1_p1[channel_swash_rgt_pit];	// labelled main-2	PWM_MAIN_DIS2
+		ao_msg.control[2] = fcon.channel_n1_p1[channel_swash_rgt_ail];	// labelled main-3	PWM_MAIN_DIS3
+		ao_msg.control[3] = fcon.channel_n1_p1[channel_swash_rgt_ele];	// labelled main-4	PWM_MAIN_DIS4
+
+		ao_msg.control[4] = fcon_escL_send;	// labelled main-5	PWM_MAIN_DIS5
+		ao_msg.control[5] = fcon.channel_n1_p1[channel_swash_lft_pit];	// labelled main-6	PWM_MAIN_DIS6
+		ao_msg.control[6] = fcon.channel_n1_p1[channel_swash_lft_ail];	// labelled main-7	PWM_MAIN_DIS7
+		ao_msg.control[7] = fcon.channel_n1_p1[channel_swash_lft_ele];	// labelled main-8	PWM_MAIN_DIS8
+
+		ao_msg.control[ 0] = 0.5f + 0.5f*fcon.channel_n1_p1[channel_vect_rgt];	// labelled aux-1	PWM_AUX_DIS1
+		ao_msg.control[ 1] = 0.5f + 0.5f*fcon.channel_n1_p1[channel_vect_lft];	// labelled aux-2	PWM_AUX_DIS2
+		ao_msg.control[ 2] = 0.5f + 0.5f*fcon.channel_n1_p1[channel_elev];	// labelled aux-3	PWM_AUX_DIS3
+		ao_msg.control[ 3] = 0.5f + 0.5f*fcon.channel_n1_p1[channel_rudd];	// labelled aux-4	PWM_AUX_DIS4
+		ao_msg.control[ 4] = 0.5f + 0.5f*fcon.channel_n1_p1[channel_ailn_lft];	// lower-left		PWM_AUX_DIS5
+		ao_msg.control[ 5] = 0.5f + 0.5f*fcon.channel_n1_p1[channel_ailn_rgt];	// lower-right		PWM_AUX_DIS6
+
+
+

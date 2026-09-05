@@ -1,0 +1,31 @@
+
+
+build location
+
+cd /Users/redfour/Austin_PX4/PX4-Autopilot/build/px4_fmu-v6xrt_default/px4_fmu-v6xrt_default.px4
+
+
+Thunderfly shit
+
+https://docs.px4.io/main/en/sensor/thunderfly_tachometer#software-setup
+
+https://github.com/ThunderFly-aerospace/TFRPM01?tab=readme-ov-file
+
+
+Pixhawk connector standard:
+
+https://github.com/pixhawk/Pixhawk-Standards/blob/master/DS-009%20Pixhawk%20Connector%20Standard.pdf
+
+https://www.pixhawk.store/docs/flight-controller/pixhawk-baseboards/pixhawk-baseboards-pixhawk-baseboard-v2-ports-1823
+
+
+My specialized docs
+
+https://github.com/Farufon/RU3Y-WIKI/blob/main/TFRPM01/Build%20Modifications.md
+
+file:///Users/redfour/Documents/GitHub/RU3Y-WIKI/PX4%20Firmware%20Building/PX4%20Firmware%20Build%20Environment.md
+
+
+distribution
+
+https://github.com/Farufon/RU3Y-WIKI/blob/main/TFRPM01/LIVE%20RPM%20on%20I2C%20Port%20into%20Pixhawk%20for%20Austin%20PX4.md

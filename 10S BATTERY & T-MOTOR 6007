@@ -1,0 +1,760 @@
+# PRD / Engineering Build Document  
+## Permanent 10S Battery System from Two 5S LiPo Packs  
+### External Charge Port + External 10S Balance Port  
+### No Routine Pack Disconnection Required
+
+**Document version:** 1.0  
+**Status:** Draft for implementation  
+**Intended use:** Aircraft / embedded battery installation  
+**Configuration:** 2 × 5S LiPo permanently wired in series as 1 × 10S pack
+
+---
+
+# 1. Purpose
+
+This document defines a practical engineering method for installing **two 5S LiPo batteries permanently in series** so the assembly behaves as a **single 10S pack**, while still allowing:
+
+- normal discharge through the aircraft power system
+- external charging without opening the battery compartment
+- external balance charging without disconnecting the two 5S packs from each other
+- serviceability and verification during assembly
+
+This is the **RC-safe approach** when onboard BMS convenience is not desired in the main flight power path.
+
+---
+
+# 2. Design Goal
+
+Create a battery system that:
+
+1. Permanently connects two 5S LiPo packs in series  
+2. Presents the charger with a true 10S pack  
+3. Allows charging from outside the airframe  
+4. Allows balance charging from outside the airframe  
+5. Avoids repeated unplugging/replugging of the two internal packs  
+6. Preserves normal RC-style charger control and cell monitoring
+
+---
+
+# 3. Electrical Summary
+
+## 3.1 Battery math
+
+| Parameter | Per Cell | 5S Pack | 10S Pack |
+|---|---:|---:|---:|
+| Nominal voltage | 3.7 V | 18.5 V | 37.0 V |
+| Full charge voltage | 4.2 V | 21.0 V | 42.0 V |
+| Conservative storage voltage | 3.8 V | 19.0 V | 38.0 V |
+| Typical low-voltage caution zone | 3.5 V | 17.5 V | 35.0 V |
+| Absolute floor (not recommended in use) | 3.0 V | 15.0 V | 30.0 V |
+
+---
+
+## 3.2 System concept
+
+Two 5S packs are wired permanently in series:
+
+- **Pack A** = lower 5 cells
+- **Pack B** = upper 5 cells
+- Pack A positive is permanently tied to Pack B negative
+- Charger sees one 10S pack through:
+  - **main charge leads**
+  - **10S balance harness**
+
+---
+
+# 4. Recommended Architecture
+
+## 4.1 Option selected
+
+**Option 1: Permanent 10S pack with external 10S balance-charge interface**
+
+This document covers only this option.
+
+### Why this option
+- Keeps flight power path simple
+- No onboard BMS interruption risk
+- Uses normal balance-charger logic
+- Cells remain individually visible to charger
+- No need to split packs apart for normal charging
+
+---
+
+# 5. System Block Diagram
+
+```text
+[5S Pack A] --series link-- [5S Pack B]
+     |                          |
+     |                          |
+     +---- lower cell taps -----+
+                                +---- upper cell taps -----+
+                                                         |
+                               +-------------------------+
+                               |
+                        [External 10S Balance Port]
+
+Pack A negative ---------------------------------------------+
+                                                             |
+                                                             +---- [Main Negative Port]
+                                                             |
+Pack B positive ---------------------------------------------+
+                                                             |
+                                                             +---- [Main Positive Port]
+
+
+⸻
+
+6. Functional Requirements
+
+ID	Requirement	Priority
+FR-01	System shall combine two 5S LiPo packs into one permanent 10S series assembly	Critical
+FR-02	System shall expose main positive and main negative externally	Critical
+FR-03	System shall expose all 10 cell nodes externally through a 10S balance connector	Critical
+FR-04	Charging shall be possible without disconnecting the internal series link	Critical
+FR-05	System shall support balance charging with a proper 10S LiPo charger	Critical
+FR-06	Wiring shall be mechanically restrained and insulated against vibration and chafing	Critical
+FR-07	External ports shall prevent accidental shorts during handling	Critical
+FR-08	System shall allow continuity and voltage verification during build	High
+
+
+⸻
+
+7. Non-Goals
+
+This design does not include:
+	•	onboard BMS in the main discharge path
+	•	direct charging through main leads only with no balance access
+	•	blind charging from a 42 V supply with no cell-level monitoring
+	•	field-swapping from 10S to dual-5S operating modes
+	•	cell-level telemetry electronics
+
+⸻
+
+8. Pack Requirements
+
+The two 5S packs should be as closely matched as possible.
+
+8.1 Required matching criteria
+
+Parameter	Requirement
+Cell count	Both packs must be 5S
+Chemistry	Same chemistry type
+Capacity	Same mAh rating preferred
+C rating	Same preferred
+Brand / product line	Same strongly preferred
+Age / cycle count	Similar strongly preferred
+Physical condition	No puffing, damage, or abnormal IR behavior
+
+8.2 Recommended example
+	•	5S pack A: 5000 mAh, 50C
+	•	5S pack B: 5000 mAh, 50C
+	•	same brand, same line, same age
+
+⸻
+
+9. Connector Strategy
+
+9.1 External interfaces required
+
+Interface	Purpose	Notes
+Main power connector	Discharge and charger main current path	XT90 or XT60 depending current
+10S balance connector	Cell-by-cell monitoring and balancing	Must expose all 11 nodes
+Optional service disconnect / arming plug	Safety during installation and maintenance	Strongly recommended
+
+9.2 Practical recommendation
+
+For higher current systems
+	•	Main connector: XT90 or anti-spark equivalent
+	•	Balance connector: dedicated protected balance harness / panel breakout
+	•	Arming / service disconnect: separate removable link if possible
+
+For moderate current systems
+	•	Main connector: XT60 may be adequate
+	•	same balance requirements still apply
+
+⸻
+
+10. Naming Convention
+
+Use the following node naming throughout the build.
+
+10.1 Cell node naming
+
+A 10S pack has 11 electrical nodes.
+
+Node	Meaning
+B0	Full pack negative
+B1	Cell 1 positive
+B2	Cell 2 positive
+B3	Cell 3 positive
+B4	Cell 4 positive
+B5	Cell 5 positive
+B6	Cell 6 positive
+B7	Cell 7 positive
+B8	Cell 8 positive
+B9	Cell 9 positive
+B10	Full pack positive
+
+
+⸻
+
+11. Series Mapping from Two 5S Packs
+
+11.1 Logical mapping
+
+Physical location	10S node
+Pack A negative	B0
+Pack A cell 1 tap	B1
+Pack A cell 2 tap	B2
+Pack A cell 3 tap	B3
+Pack A cell 4 tap	B4
+Pack A positive	B5
+Pack B negative	same series junction as B5
+Pack B cell 1 tap	B6
+Pack B cell 2 tap	B7
+Pack B cell 3 tap	B8
+Pack B cell 4 tap	B9
+Pack B positive	B10
+
+
+⸻
+
+11.2 Important note about the series midpoint
+
+The permanent series connection is:
+
+Pack A positive  <---->  Pack B negative
+
+That node is the electrical midpoint of the 10S pack.
+
+In the 10S pack model, this junction is where the system transitions from:
+	•	cell 5
+to
+	•	cell 6
+
+So this midpoint must be correctly represented in the balance harness.
+
+⸻
+
+12. High-Level Wiring Diagram
+
+               5S PACK A                          5S PACK B
+        +-------------------+              +-------------------+
+        | C1 C2 C3 C4 C5    |              | C6 C7 C8 C9 C10  |
+        +-------------------+              +-------------------+
+
+Main -   o--------------------------------------------- B0
+          \
+           +---- Balance tap B0
+
+Tap B1    o--------------------------------------------- Cell 1+
+Tap B2    o--------------------------------------------- Cell 2+
+Tap B3    o--------------------------------------------- Cell 3+
+Tap B4    o--------------------------------------------- Cell 4+
+Tap B5    o------ Pack A positive ----+
+                                      |
+                                      +---- Permanent series junction
+                                      |
+Tap B6    o------ Pack B cell 1+ -----+
+
+Tap B7    o--------------------------------------------- Cell 7+
+Tap B8    o--------------------------------------------- Cell 8+
+Tap B9    o--------------------------------------------- Cell 9+
+
+Main +   o--------------------------------------------- B10
+          \
+           +---- Balance tap B10
+
+
+⸻
+
+13. Charge Architecture
+
+13.1 Charger view
+
+The charger must see:
+	1.	Main pack negative
+	2.	Main pack positive
+	3.	All intermediate cell taps
+
+That means the charger sees the installed battery as:
+
+One 10S LiPo pack
+
+not as two separate 5S packs.
+
+⸻
+
+13.2 Charging ports required
+
+Port	Required	Function
+Main charge leads	Yes	Carries bulk charge current
+10S balance leads	Yes	Monitors and balances all cells
+
+
+⸻
+
+14. Why Main Leads Alone Are Not Enough
+
+A charger connected only to pack negative and pack positive can see only total voltage.
+
+That is not sufficient to ensure:
+	•	no individual cell exceeds max voltage
+	•	no drift between cell groups
+	•	correct end-of-charge on every cell
+
+14.1 Simple comparison table
+
+Method	Sees total pack voltage	Sees each cell	Safe for routine LiPo balance charging
+Main leads only	Yes	No	No
+Main + balance leads	Yes	Yes	Yes
+
+
+⸻
+
+15. Build Procedure
+
+Step 1 — Select packs
+
+Choose two 5S packs that are as closely matched as possible.
+
+Acceptance checks
+	•	both physically undamaged
+	•	resting voltages close
+	•	no swelling
+	•	no damaged balance leads
+	•	same connector family preferred
+
+⸻
+
+Step 2 — Define external connectors
+
+Choose:
+	•	main connector type
+	•	balance connector format
+	•	service disconnect / arming connector if used
+
+Recommendation
+	•	XT90 for main if current is substantial
+	•	protected balance breakout mounted so pins cannot be shorted accidentally
+
+⸻
+
+Step 3 — Bench-map all wires before soldering
+
+Label every node.
+
+Label set
+	•	B0 through B10
+	•	Main+
+	•	Main-
+	•	Series junction
+
+Use heat-shrink labels or written tags.
+
+⸻
+
+Step 4 — Verify each 5S pack independently
+
+Before combining them, verify:
+	•	pack voltage
+	•	each cell voltage from balance lead
+	•	correct wire order on each pack
+
+Record sheet
+
+Item	Pack A	Pack B
+Total voltage		
+Cell 1		
+Cell 2		
+Cell 3		
+Cell 4		
+Cell 5		
+
+Do not proceed until each pack is confirmed sane.
+
+⸻
+
+Step 5 — Create the permanent series link
+
+Connect:
+
+Pack A positive  -->  Pack B negative
+
+This is now the internal series bridge.
+
+Requirements
+	•	proper wire gauge
+	•	mechanically strain-relieved
+	•	fully insulated
+	•	no exposed conductor
+
+⸻
+
+Step 6 — Bring out main pack leads
+
+Connect:
+	•	Main negative from Pack A negative = B0
+	•	Main positive from Pack B positive = B10
+
+These become the external high-current leads.
+
+⸻
+
+Step 7 — Build the 10S balance harness
+
+Map all nodes to the external balance interface:
+
+10S Node	Source
+B0	Pack A negative
+B1	Pack A cell 1 tap
+B2	Pack A cell 2 tap
+B3	Pack A cell 3 tap
+B4	Pack A cell 4 tap
+B5	Pack A positive / series junction
+B6	Pack B cell 1 tap
+B7	Pack B cell 2 tap
+B8	Pack B cell 3 tap
+B9	Pack B cell 4 tap
+B10	Pack B positive
+
+Critical rule
+
+Do not guess wire order. Confirm with a meter.
+
+⸻
+
+Step 8 — Verify cumulative voltage progression
+
+With a meter referenced to B0, each balance node should increase monotonically.
+
+Example chart
+
+Node	Expected behavior
+B0	0 V
+B1	~3.7 to 4.2 V
+B2	~7.4 to 8.4 V
+B3	~11.1 to 12.6 V
+B4	~14.8 to 16.8 V
+B5	~18.5 to 21.0 V
+B6	~22.2 to 25.2 V
+B7	~25.9 to 29.4 V
+B8	~29.6 to 33.6 V
+B9	~33.3 to 37.8 V
+B10	~37.0 to 42.0 V
+
+If any step goes backward
+
+Stop immediately. The harness is wrong.
+
+⸻
+
+Step 9 — Mount and protect wiring
+
+Secure:
+	•	pack bodies
+	•	series bridge
+	•	main leads
+	•	balance harness
+	•	external ports
+
+Required protections
+	•	anti-chafe sleeve where wires pass structure
+	•	no unsupported solder joints
+	•	no pinched balance wires
+	•	no exposed midpoint
+
+⸻
+
+Step 10 — Perform first charger recognition test
+
+Connect charger with:
+	•	main leads
+	•	balance connector
+
+The charger should identify a 10S lithium pack.
+
+If it identifies the wrong cell count:
+	•	disconnect immediately
+	•	re-check balance wire order
+
+⸻
+
+Step 11 — Perform low-rate first balance charge
+
+For first commissioning:
+	•	use a conservative charge rate
+	•	watch pack temperature
+	•	confirm charger cell count
+	•	confirm end voltages are sensible
+
+First-charge objective
+
+Prove that:
+	•	charger reads all 10 cells
+	•	no cell group rises abnormally
+	•	wiring remains cool
+	•	connectors remain stable
+
+⸻
+
+16. Voltage Progression Chart
+
+16.1 Cumulative node chart
+
+B10  |----------------------------------------- Full pack positive
+B9   |------------------------------------ Cell 9 positive
+B8   |-------------------------------- Cell 8 positive
+B7   |---------------------------- Cell 7 positive
+B6   |------------------------ Cell 6 positive
+B5   |-------------------- Series midpoint / Cell 5 positive
+B4   |---------------- Cell 4 positive
+B3   |------------ Cell 3 positive
+B2   |-------- Cell 2 positive
+B1   |---- Cell 1 positive
+B0   | Full pack negative
+
+16.2 Conceptual staircase chart
+
+Voltage vs. node number
+
+B10  ████████████████████████████████████████
+B9   ███████████████████████████████████
+B8   ███████████████████████████████
+B7   ███████████████████████████
+B6   ███████████████████████
+B5   ███████████████████
+B4   ███████████████
+B3   ███████████
+B2   ███████
+B1   ███
+B0
+
+The values must rise in clean steps.
+
+⸻
+
+17. Charging Procedure
+
+Routine charge procedure
+
+Step 1
+
+Ensure aircraft power system is off and safe.
+
+Step 2
+
+If a service disconnect or arming plug exists, place the aircraft in safe charging configuration.
+
+Step 3
+
+Connect charger main leads to external main battery charge connector.
+
+Step 4
+
+Connect charger balance lead to external 10S balance connector.
+
+Step 5
+
+Confirm charger detects:
+	•	chemistry correctly
+	•	10S correctly
+	•	pack voltage plausibly
+
+Step 6
+
+Start balance charge at approved rate.
+
+Step 7
+
+Monitor first minutes for:
+	•	heat
+	•	connector issues
+	•	unusual charger behavior
+
+Step 8
+
+At charge completion, verify:
+	•	total pack voltage
+	•	individual cell voltages
+	•	no abnormal drift
+
+⸻
+
+18. Discharge / Flight Use Procedure
+
+Pre-flight
+	•	inspect packs
+	•	inspect external connectors
+	•	verify no damaged balance wiring
+	•	confirm pack voltage
+	•	confirm no loose service links
+
+Post-flight
+	•	check pack temperature
+	•	check individual cell spread periodically
+	•	inspect for vibration wear
+
+⸻
+
+19. Safety Requirements
+
+ID	Safety Requirement
+SR-01	No exposed live conductor at external charge ports
+SR-02	Balance connector must be protected against accidental shorting
+SR-03	Series midpoint must be fully insulated
+SR-04	Wires must be strain-relieved
+SR-05	Pack must not be charged unattended during initial verification cycles
+SR-06	First charging cycles should be conservative
+SR-07	Any wiring ambiguity requires stopping and re-metering
+SR-08	No attempt shall be made to charge through main leads only
+
+
+⸻
+
+20. Failure Modes and Checks
+
+Failure mode	Likely cause	Detection method	Action
+Charger sees wrong cell count	Balance harness miswired	Charger recognition test	Disconnect and re-map
+Charger errors immediately	Open tap or reversed tap sequence	Meter node ladder	Repair harness
+Cell group rises too fast	Bad pack or wrong node mapping	Balance screen	Stop charge
+Connector heating	Undersized wire/poor solder joint	Thermal inspection	Rework
+Intermittent pack behavior	Vibration or weak strain relief	Wiggle inspection off-power	Re-secure
+Short at external connector	Poor port protection	Visual inspection	Redesign shielding
+
+
+⸻
+
+21. Acceptance Criteria
+
+System is accepted only if all criteria below are met.
+
+21.1 Electrical acceptance
+	•	charger detects 10S
+	•	total voltage correct
+	•	individual cells readable
+	•	all balance nodes monotonic from B0 to B10
+
+21.2 Mechanical acceptance
+	•	no wire chafe
+	•	no unsupported solder joints
+	•	no exposed conductor
+	•	connectors positively retained
+
+21.3 Functional acceptance
+	•	first balance charge completes normally
+	•	cells remain within acceptable spread
+	•	no abnormal heating
+	•	aircraft can be charged externally without opening internal pack wiring
+
+⸻
+
+22. Test Plan
+
+Bench Test 1 — Pack verification before assembly
+	•	verify each 5S pack individually
+	•	record cell voltages
+
+Bench Test 2 — Series link verification
+	•	verify B0 to B10 full pack voltage
+	•	verify midpoint voltage at B5
+
+Bench Test 3 — Balance ladder verification
+	•	meter B0 to each node
+	•	ensure rising staircase
+
+Bench Test 4 — Charger recognition
+	•	connect main + balance leads
+	•	verify charger identifies 10S
+
+Bench Test 5 — First low-rate balance charge
+	•	monitor temperature
+	•	monitor cell spread
+
+Bench Test 6 — Post-charge voltage review
+	•	confirm final total voltage
+	•	confirm final individual cell voltages
+
+⸻
+
+23. Implementation Notes
+
+23.1 Balance harness handling
+
+Balance wires are fragile compared to main leads. Route and anchor them accordingly.
+
+23.2 Connector layout
+
+Do not place balance pins where tools or conductive debris can bridge them.
+
+23.3 Serviceability
+
+Leave enough slack to test continuity and voltage, but not so much that vibration can work the wires.
+
+23.4 Charger compatibility
+
+This design assumes use of a charger that can actually handle:
+	•	10S LiPo
+	•	external balance charging
+	•	appropriate main current
+
+⸻
+
+24. Summary
+
+This design creates a permanent embedded 10S battery from two 5S LiPo packs by:
+	1.	permanently connecting the packs in series
+	2.	exposing the main pack terminals externally
+	3.	exposing all 11 cell nodes externally through a 10S balance interface
+	4.	charging with a proper 10S balance charger without separating the internal packs
+
+This is the simplest robust engineering path when you want:
+	•	no routine internal disconnects
+	•	proper balance charging
+	•	no BMS in the main flight power path
+
+⸻
+
+25. Quick Reference Table
+
+Item	Value / Rule
+Pack configuration	2 × 5S in series
+Resulting battery	10S
+Nominal voltage	37.0 V
+Full charge voltage	42.0 V
+External main leads required	Yes
+External balance harness required	Yes
+Can charge through main leads only	No
+Need to disconnect packs from each other to charge	No
+Need charger that supports 10S balance charge	Yes
+
+
+⸻
+
+26. Builder Checklist
+
+Before wiring
+	•	Both packs verified healthy
+	•	Connector strategy selected
+	•	Wire gauges selected
+	•	Labels prepared
+
+During wiring
+	•	Series link built and insulated
+	•	Main leads brought out
+	•	Balance nodes mapped B0 through B10
+	•	All wires strain-relieved
+
+Before first charge
+	•	Node staircase verified with meter
+	•	No reversed or skipped balance wires
+	•	Charger compatibility confirmed
+	•	Safe charging setup prepared
+
+After first charge
+	•	Charger recognized 10S correctly
+	•	No heating observed
+	•	Cell spread acceptable
+	•	External charging works without internal disconnection
+
+If you want, I can turn this into a **clean `.md` file** and also make a **second companion doc with an actual connector pinout and wiring schematic**.

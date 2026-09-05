@@ -1,0 +1,125 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{siunitx}
+\usepackage{booktabs}
+\usepackage{caption}   % for \captionof{table}
+\usepackage[hidelinks]{hyperref}
+
+\sisetup{per-mode=symbol}
+
+\title{Hover Lift Estimates for a Two-Blade VTOL Nacelle Rotor}
+\author{Jon Farhat (inputs)}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Inputs (Per Nacelle)}
+\begin{itemize}
+  \item Blades: $N_b=2$, variable pitch (0--10$^\circ$)
+  \item Chord: $c=\SI{0.030}{m}$
+  \item Electrical power in hover: $P_e=\SI{400}{W}$ (about \SI{27}{A} on 4S)
+  \item Nacelle mass: $m_n=\SI{1.292}{kg}$, gravity $g=\SI{9.81}{m/s^2}$
+  \item Air density: $\rho=\SI{1.225}{kg/m^3}$
+  \item Radii evaluated: $R=\SI{0.435}{m}$ and $R=\SI{0.600}{m}$
+\end{itemize}
+
+\section{Geometry}
+Disk area:
+\begin{equation}
+A=\pi R^2
+\end{equation}
+Solidity (shows where chord enters blade-element models):
+\begin{equation}
+\sigma=\frac{N_b c}{\pi R}
+\end{equation}
+
+Computed:
+\begin{align}
+A_{435} &= \pi(0.435)^2 = \SI{0.594}{m^2}, &
+\sigma_{435} &= \frac{2(0.030)}{\pi(0.435)} = 0.0439 \\
+A_{600} &= \pi(0.600)^2 = \SI{1.131}{m^2}, &
+\sigma_{600} &= \frac{2(0.030)}{\pi(0.600)} = 0.0318
+\end{align}
+
+\section{Baseline Weight (Nacelle Only)}
+\begin{equation}
+W_n=m_n g = 1.292\times 9.81 = \SI{12.67}{N}
+\end{equation}
+
+\section{Hover Thrust From Power (Momentum Theory)}
+Induced velocity in hover:
+\begin{equation}
+v_i=\sqrt{\frac{T}{2\rho A}}
+\end{equation}
+Ideal induced power:
+\begin{equation}
+P_{i,\mathrm{ideal}} = T v_i = \frac{T^{3/2}}{\sqrt{2\rho A}}
+\end{equation}
+Solve for thrust vs \emph{shaft} power $P_s$:
+\begin{equation}
+T_{\mathrm{ideal}}(P_s)=\left(P_s\sqrt{2\rho A}\right)^{2/3}
+\end{equation}
+
+We model electrical-to-effective power with an overall effectiveness $\eta$:
+\begin{equation}
+P_s\approx \eta P_e
+\qquad\Rightarrow\qquad
+T_{\mathrm{real}}\approx \eta^{2/3} T_{\mathrm{ideal}}(P_e)
+\end{equation}
+
+\section{Case Results (Per Nacelle)}
+Using $P_e=\SI{400}{W}$:
+
+\subsection*{Case A: $R=\SI{0.435}{m}$}
+\begin{align}
+T_{\mathrm{ideal},435} &= \left(400\sqrt{2(1.225)(0.594)}\right)^{2/3} = \SI{61.5}{N} \\
+\frac{T_{\mathrm{ideal},435}}{g} &= \SI{6.27}{kgf} \\
+m_{\mathrm{payload,ideal},435} &= 6.27 - 1.292 = \SI{4.98}{kg}
+\end{align}
+
+\subsection*{Case B: $R=\SI{0.600}{m}$}
+\begin{align}
+T_{\mathrm{ideal},600} &= \left(400\sqrt{2(1.225)(1.131)}\right)^{2/3} = \SI{76.2}{N} \\
+\frac{T_{\mathrm{ideal},600}}{g} &= \SI{7.77}{kgf} \\
+m_{\mathrm{payload,ideal},600} &= 7.77 - 1.292 = \SI{6.48}{kg}
+\end{align}
+
+\section{Realistic Bracket Using \texorpdfstring{$\eta$}{eta}}
+Pick example effectiveness values:
+\[
+\eta\in\{0.35,\,0.50,\,0.60\}
+\quad\Rightarrow\quad
+\eta^{2/3}\in\{0.497,\,0.630,\,0.711\}.
+\]
+
+\bigskip
+\noindent\captionof{table}{Hover thrust and payload above nacelle mass (per nacelle) at $P_e=\SI{400}{W}$.}
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Case & $\eta$ & Thrust (kgf) & Payload above nacelle (kg) \\
+\midrule
+$R=\SI{0.435}{m}$ & Ideal ($\eta=1$) & 6.27 & 4.98 \\
+$R=\SI{0.435}{m}$ & 0.35 & 3.11 & 1.82 \\
+$R=\SI{0.435}{m}$ & 0.50 & 3.95 & 2.66 \\
+$R=\SI{0.435}{m}$ & 0.60 & 4.46 & 3.17 \\
+\midrule
+$R=\SI{0.600}{m}$ & Ideal ($\eta=1$) & 7.77 & 6.48 \\
+$R=\SI{0.600}{m}$ & 0.35 & 3.86 & 2.57 \\
+$R=\SI{0.600}{m}$ & 0.50 & 4.90 & 3.60 \\
+$R=\SI{0.600}{m}$ & 0.60 & 5.53 & 4.24 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Two Nacelles (Total Payload Above Both Nacelles)}
+If you have two identical nacelles (two rotors total), approximate total payload above both nacelles:
+\[
+m_{\mathrm{payload,total}} \approx 2\,m_{\mathrm{payload,per\;nacelle}}
+\]
+(assuming no large rotor--rotor interference and comparable operating points).
+
+\end{document}

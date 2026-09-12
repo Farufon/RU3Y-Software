@@ -1,0 +1,8 @@
+# Laptop-side software for the nacelle thrust stand.
+#
+#   pip3 install -r requirements.txt
+#
+# bench.py needs pyserial to talk to the Arduino.
+# reduce.py needs nothing at all; it is standard library only.
+#
+pyserial>=3.5

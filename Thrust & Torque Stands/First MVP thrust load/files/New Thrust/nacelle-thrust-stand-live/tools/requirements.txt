@@ -1,0 +1,13 @@
+# Laptop-side software for the nacelle thrust stand.
+#
+#   source ~/venvs/forcerigs/bin/activate
+#   pip3 install -r requirements.txt
+#
+# Do NOT install these into the system Python on the Mac. Build the virtual
+# environment once per docs/15-python-venv.md, then activate it in every shell.
+#
+# bench.py needs pyserial to talk to the Arduino.
+# reduce.py needs nothing at all; it is standard library only.
+# live.py needs pyserial too; everything else it uses is standard library.
+#
+pyserial>=3.5

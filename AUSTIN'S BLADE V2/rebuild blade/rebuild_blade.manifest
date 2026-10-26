@@ -1,0 +1,10 @@
+{
+    "autodeskProduct": "Fusion360",
+    "type": "script",
+    "author": "Jon Farhat",
+    "description": {
+        "": "Rebuild the blade from clean sections, build the block with holes, join, and fillet the root junction."
+    },
+    "supportedOS": "windows|mac",
+    "editEnabled": true
+}

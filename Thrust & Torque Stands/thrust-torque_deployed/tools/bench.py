@@ -42,10 +42,16 @@ except ImportError:
 
 LBF_TO_N = 4.4482216
 DEFAULT_BAUD = 115200
+# Keep in step with RUN_LOG_FIELDS in live.py; live.py owns the schema.
+# bench.py has no tachs or meter, so it leaves those columns blank, but the
+# header matches so the two tools can append to the same file and reduce.py
+# sees one shape.
 CSV_FIELDS = ["height_mm", "z_over_R", "head_rpm_cmd", "head_rpm_actual",
               "collective_deg", "servo_us", "throttle_pct",
               "thrust_lbf", "volts", "amps",
-              "pack_soc", "notes"]
+              "pack_soc", "notes",
+              "rpm_port", "rpm_stbd", "volts_stbd", "amps_stbd",
+              "watts", "power_ch"]
 
 # The ladders from docs/06-test-protocol.md.
 # Height is the OUTER loop, governed RPM the middle, collective the inner.
@@ -53,7 +59,7 @@ ROTOR_RADIUS_MM = 457.0          # confirmed 4 Sep 2026, hub centreline to tip
 Z_OVER_R_LADDER = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
 HEIGHT_LADDER = [round(z * ROTOR_RADIUS_MM) for z in Z_OVER_R_LADDER]
 
-VERSION = "2026-09-17.5"
+VERSION = "2026-10-26.1"
 
 RPM_LADDER = [1600, 1700, 1800, 1900, 2000]
 
@@ -509,6 +515,7 @@ def action_run(link, csv_path, raw_dir):
             "amps": f"{amps:.2f}",
             "pack_soc": soc,
             "notes": note,
+            "watts": f"{volts * amps:.1f}",     # typed values, so V*A is all there is
         }
 
     print(f"\n  Spool up to {rpm_cmd:.0f} rpm at MINIMUM COLLECTIVE.")
@@ -571,9 +578,10 @@ def write_rows(path, rows):
     exists = os.path.exists(path) and os.path.getsize(path) > 0
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
     with open(path, "a", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=CSV_FIELDS)
+        # no leading '#' comment line: live.py reads row 0 as the header when
+        # it widens an older file, and a comment there made it refuse
+        w = csv.DictWriter(fh, fieldnames=CSV_FIELDS, restval="")
         if not exists:
-            fh.write("# Nacelle thrust stand run log, written by bench.py\n")
             w.writeheader()
         for r in rows:
             w.writerow(r)

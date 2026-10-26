@@ -1,11 +1,11 @@
-# INSTALL - unpacking and updating this package on the Mac
+# INSTALL - updating this package on the Mac, and killing stale processes
 
-Every version of this package unpacks to a folder called
-`nacelle-thrust-stand-live`. That is deliberate, so the paths in the docs
-never change. It also means **double-clicking a new zip in Finder when the old
-folder is still there silently creates `nacelle-thrust-stand-live 2` beside
-it**, and you carry on running the old code without noticing. That has already
-happened once. Do it from Terminal instead.
+This folder is a **git working copy**: `thrust-torque_deployed` inside the
+`RU3Y-Software` repository. Updates come through git, not zips. (Earlier
+versions shipped as `nacelle-thrust-stand-live-*.zip` and unpacked beside the
+old folder; Finder would quietly make a `... 2` copy and you would run old
+code without noticing. That is why `live.py --version` prints the path of the
+file that actually ran. Keep reading it.)
 
 ## Check what you are running
 
@@ -15,47 +15,61 @@ python3 tools/live.py --version
 ```
 
 Both print the version. `live.py --version` also prints the full path of the
-file that actually ran, which is the thing to look at when something seems
-stale. The startup banner prints the same line every launch.
+file, which is the thing to look at when something seems stale. The startup
+banner prints the same line every launch.
 
-## Update: replace the old folder
-
-From the folder that contains the zip and the old `nacelle-thrust-stand-live`:
+## Update
 
 ```
-bash nacelle-thrust-stand-live/tools/stop.sh     # kill anything still running from the old copy
-mv nacelle-thrust-stand-live/tools/logs ./logs-keep 2>/dev/null   # keep your data, if any
-rm -rf nacelle-thrust-stand-live
-unzip -q nacelle-thrust-stand-live-*.zip
-mv ./logs-keep nacelle-thrust-stand-live/tools/logs 2>/dev/null   # put the data back
-cat nacelle-thrust-stand-live/VERSION
+bash tools/stop.sh      # nothing of ours may hold a port while files change
+git pull
+cat VERSION
 ```
 
-`logs/` is the only thing in the tree you generate yourself. Everything else
-comes from the zip and can be deleted freely. If you have edited a doc by
-hand, copy it out first.
+Everything you generate on the bench is listed in `.gitignore` and survives a
+pull: `tools/logs/` (all the CSVs), `tools/ports.json` (which board is on
+which socket), `tools/live-settings.json` (the gear ratio from the dashboard),
+and the two binaries under `rpm/`. If you have edited a doc by hand, commit
+it or copy it out first; `git status` shows what you have touched.
 
-If there is a `nacelle-thrust-stand-live 2` (or `3`) lying around from an
-earlier Finder unpack, delete it too. It is a full copy of some older version
-and will only cause this again.
+Commit by **named path**, never `git add .`. A bare `git add .` once bundled
+a mass deletion into a commit here.
 
 ## Build the tach reader once
 
-`live.py` spawns `rpm/rpm_reader_static` for the two FT232H boards. It is a
-compiled binary and is not in the zip, so after unpacking:
+`live.py` spawns `rpm/rpm_reader_static` for the two FT232H boards. It is
+compiled from `rpm/src` and is not tracked in git, so on a fresh clone:
 
 ```
-bash nacelle-thrust-stand-live/rpm/scripts/build_static.sh
+bash rpm/scripts/build_static.sh
 ```
 
-Needs the Apple command line tools (`clang`). If you skip this, thrust still
-works and the RPM panels say `reader down`. Doc 16 has the rest.
+`tools/start.sh` runs this for you if the binary is missing. Needs the Apple
+command line tools (`clang`). If it fails, thrust still works and the RPM
+panels say `reader down`. Doc 16 has the rest.
+
+## Firmware
+
+Three sketches, three Nanos: `firmware/thrust_stand`, `firmware/power_meter`,
+`firmware/torque_stand`. After a pull that touched a sketch, re-flash that
+board from Arduino IDE 1.8.19 (`docs/13-arduino-working-config.md`). The
+power meter's 2026-10-26 build changed what `vScale` means; an existing `kv`
+calibration is converted on first boot, not lost, but check `d` and the
+`vcc (bandgap)` line once.
 
 ## First run after updating
 
 ```
+bash tools/start.sh
+```
+
+That is `stop.sh`, the rpm build if needed, `find_ports.py`, then `live.py`
+with every board and the dashboard opened in the browser. Doc 18 has the
+flags. By hand, if you want to see each step:
+
+```
 source ~/venvs/forcerigs/bin/activate
-cd nacelle-thrust-stand-live/tools
+cd tools
 python3 live.py --version
 python3 live.py --list
 python3 live.py --port /dev/cu.usbserial-XXXX
@@ -70,9 +84,9 @@ port it bound. Read it before opening the browser.
 bash tools/stop.sh
 ```
 
-kills any `live.py` or `bench.py` still running, then lists who holds 8000,
-8765, 8766, 8767 and every `cu.usbserial-*` device. 8000 is your video server;
-`stop.sh` reports it and leaves it alone.
+kills any `live.py`, `bench.py` or `rpm_reader_static` still running, then
+lists who holds 8000, 8765, 8766, 8767 and every `cu.usbserial-*` device.
+8000 is your video server; `stop.sh` reports it and leaves it alone.
 
 By hand, if you want to see it happen:
 
@@ -84,5 +98,5 @@ lsof /dev/cu.usbserial-*                # who is on the serial port
 ```
 
 `Errno 48 Address already in use` is always the web port, never the serial
-port, and `live.py` now steps past it on its own unless you pinned a port with
-`--http-port`.
+port, and `live.py` steps past it on its own unless you pinned a port with
+`--http-port`. With `start.sh`, the browser opens on whichever port it took.

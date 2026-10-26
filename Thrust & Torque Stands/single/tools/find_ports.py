@@ -90,7 +90,11 @@ def load_previous():
 
 def assign_rpm(found, previous, reassign):
     """Return {'port': serial, 'stbd': serial}. Keep an old assignment if the boards match."""
-    serials = [d["serial"] for d in found if d["serial"]]
+    # Adafruit FT232H boards often ship with a blank serial. Then the USB index
+    # (0, 1 in plug order) is all there is, and it follows the hub socket.
+    serials = [d["serial"] or str(d["index"]) for d in found]
+    for d in found:
+        d["key"] = d["serial"] or str(d["index"])
     old = (previous.get("rpm") or {})
     if (not reassign and old.get("port") in serials and old.get("stbd") in serials
             and old["port"] != old["stbd"]):
@@ -102,13 +106,13 @@ def assign_rpm(found, previous, reassign):
     # two or more and no usable history: ask once
     print("\nTwo FT232H tach boards found. Which is the PORT nacelle?")
     for i, d in enumerate(found):
-        print(f"   [{i}] serial {d['serial']}   (USB index {d['index']})")
+        print(f"   [{i}] serial {d['serial'] or '(blank)'}   USB index {d['index']}")
     print("Tip: unplug one, re-run, and the one that remains is the one you can see.")
     while True:
         ans = input("PORT is [0/1]: ").strip()
         if ans in ("0", "1") and int(ans) < len(found):
-            p = found[int(ans)]["serial"]
-            s = next(d["serial"] for d in found if d["serial"] != p)
+            p = found[int(ans)]["key"]
+            s = next(d["key"] for d in found if d["key"] != p)
             return {"port": p, "stbd": s}, "assigned by you just now"
 
 
@@ -153,6 +157,8 @@ def main():
         for d in found:
             print(f"   index {d['index']}  serial {d['serial']}  {d['desc']}")
         result["rpm"], how = assign_rpm(found, previous, args.reassign_rpm)
+        if found and not any(d["serial"] for d in found):
+            how += "; serials are blank so these are USB indices and follow the hub socket"
         result["rpm_note"] = how
         print(f"   PORT = {result['rpm'].get('port') or '-'}   STBD = {result['rpm'].get('stbd') or '-'}   ({how})")
 

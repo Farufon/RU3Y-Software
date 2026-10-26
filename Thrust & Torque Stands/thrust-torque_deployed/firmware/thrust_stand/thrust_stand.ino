@@ -37,6 +37,7 @@ const uint16_t STREAM_MS     = 100;   // asks for 10 Hz; the real rate is set by
                                       // RATE=H (80 SPS) x READ_AVG 8 => 10 Hz.
 const uint8_t  READ_AVG      = 8;     // HX711 samples per reported value
 const uint8_t  CAL_AVG       = 32;    // samples used during calibration
+const uint16_t READY_TIMEOUT_MS = 600; // per conversion; RATE=L is 100 ms, H is 12.5 ms
 const float    LBF_TO_N      = 4.4482216f;
 
 // ---------------------------------------------------------------- EEPROM
@@ -80,19 +81,39 @@ bool loadSettings() {
 
 // ---------------------------------------------------------------- measurement
 
-// Thrust in lbf. get_units() returns (raw - offset) / calFactor, so with the
-// offset set by tare() this is change-from-tare expressed in pounds.
-float readLbf(uint8_t n) {
-  return signFlip * scale.get_units(n);
+// Average n HX711 conversions into out. Returns false, with a '!' line, if
+// the chip stops answering. The library's own read_average()/get_units()
+// call wait_ready(), which spins forever when DT stays high on a broken cell
+// lead, and the stream would simply stop with no message.
+bool readCounts(uint8_t n, long &out) {
+  long acc = 0;
+  for (uint8_t i = 0; i < n; ++i) {
+    if (!scale.wait_ready_timeout(READY_TIMEOUT_MS, 1)) {
+      Serial.println(F("! HX711 timeout. cell lead, DT/SCK wiring, or 5V."));
+      return false;
+    }
+    acc += scale.read();
+  }
+  out = acc / n;
+  return true;
+}
+
+// Thrust in lbf from absolute counts: change from tare, scaled, signed.
+float countsToLbf(long raw) {
+  return signFlip * (float)(raw - scale.get_offset()) / calFactor;
 }
 
 void printHeader() {
   Serial.println(F("# n,ms,lbf,N,raw"));
 }
 
+// lbf and raw come from the SAME n conversions. (Earlier builds took two
+// extra conversions for raw, so the columns were from different samples and
+// each row cost 10 conversions instead of 8.)
 void printReading(uint8_t n) {
-  float lbf = readLbf(n);
-  long  raw = scale.read_average(2);
+  long raw;
+  if (!readCounts(n, raw)) return;
+  float lbf = countsToLbf(raw);
   Serial.print(sampleNum++);        Serial.print(',');
   Serial.print(millis());           Serial.print(',');
   Serial.print(lbf, 4);             Serial.print(',');
@@ -133,7 +154,9 @@ void dumpSettings() {
 
 void doTare() {
   Serial.println(F("# taring, hold still..."));
-  scale.tare(CAL_AVG);
+  long raw;
+  if (!readCounts(CAL_AVG, raw)) { Serial.println(F("! tare aborted")); return; }
+  scale.set_offset(raw);
   Serial.print(F("# tare offset = "));
   Serial.println(scale.get_offset());
   Serial.println(F("# zeroed. readings are now change from tare."));
@@ -148,8 +171,10 @@ void doCalibrate(float knownLbf) {
   Serial.print(knownLbf, 3);
   Serial.println(F(" lbf. hold still..."));
 
-  // get_value() is raw minus tare offset, unscaled.
-  float counts = scale.get_value(CAL_AVG);
+  // raw minus tare offset, unscaled.
+  long raw;
+  if (!readCounts(CAL_AVG, raw)) { Serial.println(F("! calibration aborted")); return; }
+  float counts = (float)(raw - scale.get_offset());
 
   if (fabs(counts) < 1000.0f) {
     Serial.println(F("! signal too small. is the weight applied? is the cell wired?"));
@@ -171,9 +196,12 @@ void doCalibrate(float knownLbf) {
   Serial.print(F("# calFactor = "));
   Serial.print(calFactor, 4);
   Serial.println(F(" counts/lbf, saved to EEPROM"));
-  Serial.print(F("# check: reading now "));
-  Serial.print(readLbf(CAL_AVG), 4);
-  Serial.println(F(" lbf"));
+  long again;
+  if (readCounts(CAL_AVG, again)) {
+    Serial.print(F("# check: reading now "));
+    Serial.print(countsToLbf(again), 4);
+    Serial.println(F(" lbf"));
+  }
 }
 
 void handleCommand(char *s) {
@@ -216,10 +244,14 @@ void handleCommand(char *s) {
       Serial.println((int)signFlip);
       break;
 
-    case 'z': case 'Z':
-      Serial.print(F("# raw counts = "));
-      Serial.println(scale.read_average(CAL_AVG));
+    case 'z': case 'Z': {
+      long raw;
+      if (readCounts(CAL_AVG, raw)) {
+        Serial.print(F("# raw counts = "));
+        Serial.println(raw);
+      }
       break;
+    }
 
     case 'd': case 'D':
       dumpSettings();
@@ -271,7 +303,9 @@ void setup() {
 
   bool loaded = loadSettings();
   scale.set_scale(calFactor);
-  scale.tare(CAL_AVG);
+  long boot;
+  if (readCounts(CAL_AVG, boot)) scale.set_offset(boot);
+  else Serial.println(F("! boot tare skipped; send 't' once the cell answers"));
 
   Serial.println();
   Serial.println(F("# Nacelle Thrust Stand ready"));

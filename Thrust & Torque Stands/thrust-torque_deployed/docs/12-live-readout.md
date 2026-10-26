@@ -97,6 +97,8 @@ Useful flags:
 | `--rpm-window` | 0.05 | seconds per rpm sample |
 | `--no-rpm` | | thrust only, no tach readers |
 | `--power-port` | | serial device of the power-meter Nano (doc 17); omit to type volts/amps |
+| `--single` / `--dual` | `--dual` here; `--single` in the sibling package `single` | one nacelle on the bench (one RPM card, one power card) or port and stbd side by side |
+| `--open` | | open the browser on the port actually bound; `start.sh` passes it |
 
 Nothing here touches the ESC or the motor. It reads the cell and the tachs and
 writes files.
@@ -108,6 +110,18 @@ same thing.
 
 **Live number.** Current thrust in lbf, plus newtons, raw counts, and the age
 of the last sample. Goes amber if samples stop arriving.
+
+**One nacelle or two.** This package defaults to the port and stbd cards
+side by side. `--single` is the layout for the bench with one nacelle on the
+stand: one rotor RPM card and one pack power card, each beside its strip
+chart, with a narrow number column and a wide chart. The RPM card follows
+whichever tach sees a rotor turning (above 30 rpm) and stays on it when the
+motor stops; the power card follows whichever meter channel has a pack on
+its divider. Both titles name the channel they are showing, so the stbd
+hardware can stay plugged in without confusing anything. The sibling package
+`../single` is the same code with `--single` as its default. The capture
+logic is the same in both layouts: an idle tach that is still printing zeros
+is never averaged into `head_rpm_actual`.
 
 **Strip chart.** Last 90 seconds, autoscaled, with a dashed line at zero.
 

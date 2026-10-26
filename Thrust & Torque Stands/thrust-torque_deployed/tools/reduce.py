@@ -43,8 +43,17 @@ def load_rows(path):
                 thrust = _f(raw, "thrust_lbf")
                 volts = _f(raw, "volts")
                 amps = _f(raw, "amps")
-                if thrust is None or volts is None or amps is None:
+                # live.py logs watts as the mean of instantaneous V*I from the
+                # meter, which is the right number under ESC ripple. Prefer it.
+                # mean(V) * mean(A) is the fallback for hand-typed rows and
+                # for logs older than 2026-10-26, which have no watts column.
+                watts = _f(raw, "watts") if "watts" in raw else None
+                if thrust is None:
                     continue          # unfilled template row, silently skip
+                if watts is None:
+                    if volts is None or amps is None:
+                        continue
+                    watts = volts * amps
                 rows.append({
                     "height_mm":       _f(raw, "height_mm"),
                     "head_rpm_cmd":    _f(raw, "head_rpm_cmd"),
@@ -54,7 +63,7 @@ def load_rows(path):
                     "thrust_lbf":      thrust,
                     "volts":           volts,
                     "amps":            amps,
-                    "watts":           volts * amps,
+                    "watts":           watts,
                     "line":            i,
                 })
             except (KeyError, ValueError, TypeError) as exc:

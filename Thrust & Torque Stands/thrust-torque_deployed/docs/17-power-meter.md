@@ -86,8 +86,14 @@ stbd nacelle + (after sensor) --- 100k ---+--- 10k --- Nano GND
 
 Port volts/amps/watts, then stbd, then the raw ADC counts for both. 20 rows
 per second, each from 16 oversampled ADC reads per channel (four channels). The
-ADC and the sensor are both ratiometric to the Nano's 5 V, so a sagging USB
-rail does not move the reading.
+ADC and the ACS724 are both ratiometric to the Nano's 5 V, so a sagging USB
+rail does not move the **amps**. The divider is not ratiometric: the tap
+voltage is absolute, so its count scales with 1/VCC and a rail 2% low would
+read pack volts, and watts, 2% high. The firmware therefore measures VCC
+against the ATmega's internal 1.1 V bandgap on every row and uses that
+instead of assuming 5.000 V. `d` shows the measured rail as `vcc (bandgap)`.
+Expect 4.7 to 5.1 V depending on hub load; what matters is that it no longer
+leaks into the volts.
 
 Resolution: 10-bit ADC, 40 mV/A, so 0.12 A per count, 0.02 A after
 oversampling. Volts: 0.054 V per count. Both well inside the 1 to 2% you
@@ -104,7 +110,10 @@ power console or the Arduino serial monitor:
    Zeroes both channels at once. Do this at the start of every session.
 2. **`kv p 24.87`** where 24.87 is what a multimeter reads across the port
    pack at that moment; then **`kv s 24.91`** for stbd. Sets each divider
-   scale. Once.
+   ratio (nominal 11.0 for 100k/10k; stored as `vScale`). Once. The rail at
+   that moment is folded in, so the bandgap's own part-to-part spread cancels
+   here and only rail changes afterwards are tracked. A `kv` done on a
+   pre-2026-10-26 build is converted on first boot, not lost.
 3. **`ka p 18.4`** while the port motor holds a steady load, 18.4 being what
    the LCD watt meter (still inline for this step) or a clamp meter reads;
    then **`ka s 18.1`** for stbd. Sets each gain. Once. A steady 15 to 25 A
@@ -134,23 +143,27 @@ to match the RPM cards. Below: **Zero amps** (`z`), **Settings** (`d`),
 **Write** (`w`), and the console box, which is where `ka p`, `ka s`,
 `kv p`, `kv s` go.
 
-Capture: `volts` and `amps` in the run log are the port channel's averages
-over the same window as thrust; typing a value in either box overrides the
-meter for that row. `volts_stbd` and `amps_stbd` are the stbd channel's
-averages, filled only when a pack is on that channel. `watts` on the chart
-is the mean of instantaneous V x I from the meter, which is the correct
-number under ESC ripple; the captured-points table shows port / stbd watts
-when both are live.
+Capture: `volts` and `amps` in the run log come from **whichever channel has
+a pack on it**, averaged over the same window as thrust, the same way RPM
+takes whichever tach is alive. One nacelle is on the stand at a time, so that
+channel is the head under test; the `power_ch` column records `port` or
+`stbd`. With both channels live (a two-nacelle spin test) port goes in the
+main columns and stbd in `volts_stbd` / `amps_stbd`. Typing a value in either
+box overrides the meter for that row and leaves `power_ch` blank. `watts` in
+the run log and on the chart is the mean of instantaneous V x I from the
+meter, which is the correct number under ESC ripple; `reduce.py` prefers
+that column and falls back to volts x amps only for typed rows. The
+captured-points table shows port / stbd watts when both are live.
 
 ## Log files
 
 `logs/power-YYYYmmdd-HHMMSS.csv`, one row per meter sample, 20 per second:
 `iso_time, epoch_s, board_ms, volts_port, amps_port, watts_port, volts_stbd,
 amps_stbd, watts_stbd, rawI_port, rawV_port, rawI_stbd, rawV_stbd`.
-`logs/stream-*.csv` gains `volts, amps` (port) at the end of each thrust
-row, latest meter values under a second old, else blank. `run-log.csv`
-gains `volts_stbd, amps_stbd` at the end; older run logs are widened in
-place on first use, as with the rpm columns.
+`logs/stream-*.csv` gains `volts, amps` (the live channel) at the end of
+each thrust row, latest meter values under a second old, else blank.
+`run-log.csv` gains `volts_stbd, amps_stbd, watts, power_ch` at the end;
+older run logs are widened in place on first use, as with the rpm columns.
 
 ## When it is wrong
 

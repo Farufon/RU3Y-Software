@@ -19,8 +19,11 @@
 # servo_us         raw servo command, for traceability back to the calibration
 # throttle_pct     governor setpoint record only. NOT a power setting on this head.
 # thrust_lbf       settled value from the load cell
-# volts            pack voltage UNDER LOAD, from the inline watt meter
-# amps             from the inline watt meter, not from ESC telemetry
+# volts            pack voltage UNDER LOAD, from the power-meter Nano (or the inline LCD meter if typed)
+# amps             same source, not ESC telemetry
+# watts            live.py: mean of instantaneous V*I from the meter. Hand rows: leave blank,
+#                  reduce.py uses volts*amps
+# power_ch         live.py: which meter channel fed volts/amps (port/stbd). Blank for hand rows
 #
 # Flight-test anchor, per nacelle: hover 1800 rpm, 446 W (21 A at 21 V). Your OGE
 # row at 1800 rpm should land near it. Cruise (1000 rpm, 185 W) is forward flight
@@ -30,7 +33,7 @@
 #
 # Include the FLAT PITCH point at each RPM: thrust near zero, watts = drivetrain drag.
 #
-height_mm,z_over_R,head_rpm_cmd,head_rpm_actual,collective_deg,servo_us,throttle_pct,thrust_lbf,volts,amps,pack_soc,notes,rpm_port,rpm_stbd
+height_mm,z_over_R,head_rpm_cmd,head_rpm_actual,collective_deg,servo_us,throttle_pct,thrust_lbf,volts,amps,pack_soc,notes,rpm_port,rpm_stbd,volts_stbd,amps_stbd,watts,power_ch
 229,0.50,1800,,,,,,,,,flat pitch reference
 229,0.50,1800,,4.0,,,,,,,
 229,0.50,1800,,7.0,,,,,,,

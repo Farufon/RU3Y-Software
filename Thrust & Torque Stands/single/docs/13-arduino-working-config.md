@@ -105,10 +105,15 @@ screen -L -Logfile ~/thrust-run.txt /dev/cu.usbserial-1480 115200
 
 - **CoolTerm** (free, GUI): scrollback, logging, timestamps. Easier than
   `screen` for long runs.
-- **`tools/bench.py`** in this package is the right answer for actual test
-  runs. It drives the same port, prompts through the height / RPM /
-  collective grid, and writes `data/run-log.csv` directly. No transcribing
-  numbers by hand.
+- **`tools/live.py`** is the best option in this branch. A browser dashboard
+  with a live number, a strip chart, rolling noise statistics, one-click tare
+  and calibrate, automatic logging, and a chart of your points against the
+  BEMT prediction. It also works from an iPad over the VPN, which `screen`
+  cannot. See `docs/12-live-readout.md`.
+- **`tools/bench.py`** walks the height / RPM / collective grid as a guided
+  menu session and writes `data/run-log.csv` directly.
+
+Only one program can hold the port. Pick one.
 
 ## Firmware command reference (`thrust_stand.ino`)
 
@@ -120,12 +125,19 @@ insensitive, one per line. Anything unrecognised returns `! unknown command`.
 | `h` | Help. `?` works too. | `=== Nacelle Thrust Stand ===` |
 | `t` | **Tare.** Zeroes to current load, 32 samples. | `# taring, hold still...` |
 | `r` | One reading, 8 samples averaged. | `# n,ms,lbf,N,raw` |
-| `s` | Toggle streaming at 10 Hz. Send again to stop. | `# streaming ON` / `OFF` |
+| `s` | Toggle streaming. Send again to stop. Real rate below. | `# streaming ON` / `OFF` |
 | `c <lbf>` | **Calibrate** against a hung known weight, 32 samples. | `# calibrating against ...` |
-| `f` | Flip sign. Use if thrust reads negative. | `# sign now -1` |
+| `f` | **Flip sign. Required on this rig, after every `c`.** | `# sign now -1` |
 | `z` | Raw counts, unscaled, 32 samples. Diagnostics. | `# raw counts = ` |
 | `d` | Dump settings. | `calFactor (counts/lbf) :` |
 | `w` | Force-write settings to EEPROM. | `# settings written` |
+
+**Streaming rate is not 10 Hz.** The firmware asks for 10 Hz (`STREAM_MS = 100`),
+but each reported value averages 8 HX711 conversions and the **RATE switch is on
+L**, which is 10 SPS. Eight conversions take 800 ms, so `s` delivers about
+**1.2 Hz** and the loop blocks while collecting. Move the RATE switch to **H**
+(80 SPS) to get the intended 10 Hz with no code change. `tools/live.py` displays the
+measured rate, which is the number to trust.
 
 ### Reading format
 
@@ -140,7 +152,7 @@ insensitive, one per line. Anything unrecognised returns `! unknown command`.
 | `ms` | `millis()` since boot. Not wall clock. |
 | `lbf` | Change from tare, in pounds force. **Meaningless until calibrated.** |
 | `N` | Same value in newtons (lbf x 4.4482216). |
-| `raw` | Raw HX711 counts, 2 samples. Absolute, not tare-relative. |
+| `raw` | Raw HX711 counts, the same conversions `lbf` was computed from. Absolute, not tare-relative. |
 
 `raw` is the field to trust before calibration and the field to watch for
 drift after.
@@ -163,16 +175,23 @@ Consequences:
 
 ### Calibration sequence
 
-1. Nothing hanging. `t`
-2. Hang the known weight. `c 3.11`
+1. Nacelle mounted, nothing else on it, rig settled. `t`
+2. Stack the known weight on the nacelle mount. `c 15.0`
 3. `d` and confirm calFactor is no longer `1.0000`.
-4. `r` with the weight still hanging. Should read close to the known value.
+4. `r` with the weight still on. Should read close to the known value.
 5. Swap in a second known weight. `r`. Should read close to that one.
+6. Remove the added weight. **`f`.**
+7. `d`, confirm `sign : -1`. Lift the mount by hand, `r`, confirm **positive**.
+
+**`f` is not optional on this stand.** The cell is bolted to the top of the
+post with the nacelle bolted above it, so dead weight is compression and thrust
+is tension. `c` always makes the calibration direction positive, and compression
+is the only direction you can apply a known force in. So `c` makes down
+positive, and thrust would read negative. Send `f` after every `c`.
 
 Guards in the code: `c` with a non-positive number is rejected. `c` with less
 than 1000 counts of signal is rejected as "signal too small", which means the
-weight is not actually on the cell or the wiring is broken. Negative signal
-flips the sign automatically, so `f` is rarely needed.
+weight is not actually on the cell or the wiring is broken.
 
 ### Per-run procedure
 

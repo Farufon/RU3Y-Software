@@ -1,0 +1,16 @@
+# generated on the bench, never source
+.DS_Store
+__pycache__/
+*.pyc
+
+# per-machine state written by the tools:
+#   ports.json         find_ports.py output; serial device names follow the hub socket
+#   live-settings.json gear ratio set on the dashboard
+#   logs/              stream-*.csv, rpm-*.csv, power-*.csv, run-log.csv
+tools/ports.json
+tools/live-settings.json
+tools/logs/
+
+# built from rpm/src by rpm/scripts/build_static.sh; start.sh rebuilds if missing
+rpm/rpm_reader_static
+rpm/list_ftdi

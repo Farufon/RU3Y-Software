@@ -31,7 +31,15 @@
  * 512 counts and 40 mV/A is 8.19 counts/A regardless of the USB rail.
  * Those are the defaults; 'z', 'ka', 'kv' trim them, 'w' stores them.
  *
- * Divider: 100k / 10k puts 25.2 V (6S full) at 2.29 V on the tap.
+ * Divider: 100k / 10k puts 25.2 V (6S full) at 2.29 V on the tap. The
+ * divider path is NOT ratiometric: the tap voltage is absolute, so its ADC
+ * count scales with 1/VCC, and a USB rail that sags 2% under hub load would
+ * read 2% extra pack volts and watts. Each row therefore measures VCC
+ * against the ATmega328P's internal 1.1 V bandgap and uses that instead of
+ * assuming 5.000 V. vScale is stored as the dimensionless divider ratio
+ * (nominal 11.0), and 'kv' calibrates it at whatever the rail is that day;
+ * the bandgap's own part-to-part spread falls out in that calibration, and
+ * only rail CHANGES after it are tracked, which is the point.
  *
  * Serial: 115200 baud. Send 'h' for help.
  * Row: n,ms,vP,aP,wP,vS,aS,wS,rawIP,rawVP,rawIS,rawVS
@@ -56,7 +64,8 @@ const uint8_t  OVERSAMPLE  = 16;    // ADC reads per channel per row (4 channels
 
 const float    I_ZERO_NOMINAL  = 512.0f;
 const float    I_COUNTS_PER_A  = 0.040f * 1023.0f / 5.0f;   // 8.184 counts/A
-const float    V_PER_COUNT     = 5.0f / 1023.0f * 11.0f;    // divider 100k/10k
+const float    V_DIV_RATIO     = 11.0f;                     // divider (100k+10k)/10k
+const float    BANDGAP_V       = 1.10f;                     // nominal internal reference
 
 // ---------------------------------------------------------------- EEPROM
 
@@ -67,7 +76,7 @@ const uint32_t EE_MAGIC      = 0x50575232UL;   // "PWR2"
 // ---------------------------------------------------------------- state
 
 struct Cal { float iZero, iGain, vScale; };
-struct Row { float rawI[2], rawV[2], amps[2], volts[2]; };
+struct Row { float rawI[2], rawV[2], amps[2], volts[2]; float vcc; };
 Cal      cal[2];
 bool     calibrated = false;
 bool     streaming  = false;
@@ -79,7 +88,7 @@ uint8_t  cmdLen = 0;
 
 void setNominal() {
   for (uint8_t c = 0; c < 2; ++c) {
-    cal[c].iZero = I_ZERO_NOMINAL; cal[c].iGain = I_COUNTS_PER_A; cal[c].vScale = V_PER_COUNT;
+    cal[c].iZero = I_ZERO_NOMINAL; cal[c].iGain = I_COUNTS_PER_A; cal[c].vScale = V_DIV_RATIO;
   }
 }
 
@@ -100,7 +109,11 @@ bool loadSettings() {
   for (uint8_t c = 0; c < 2; ++c) {
     if (isnan(cal[c].iZero)  || cal[c].iZero < 300 || cal[c].iZero > 700) { cal[c].iZero = I_ZERO_NOMINAL; ok = false; }
     if (isnan(cal[c].iGain)  || cal[c].iGain <= 0)   { cal[c].iGain = I_COUNTS_PER_A; ok = false; }
-    if (isnan(cal[c].vScale) || cal[c].vScale <= 0)  { cal[c].vScale = V_PER_COUNT;   ok = false; }
+    // pre-2026-10-26 builds stored vScale in volts per count at an assumed
+    // 5.000 V rail (about 0.054). Convert that to a divider ratio so an old
+    // 'kv' calibration carries over instead of being thrown away.
+    if (!isnan(cal[c].vScale) && cal[c].vScale > 0 && cal[c].vScale < 1.0f) cal[c].vScale *= 1023.0f / 5.0f;
+    if (isnan(cal[c].vScale) || cal[c].vScale <= 0)  { cal[c].vScale = V_DIV_RATIO;   ok = false; }
   }
   return ok;
 }
@@ -114,13 +127,33 @@ float readAvg(uint8_t pin, uint8_t n) {
   return (float)acc / n;
 }
 
+// The Nano's AVcc rail, from the internal 1.1 V bandgap read against it.
+// ADMUX 1110 selects the bandgap; REFS0 keeps AVcc as the reference. The
+// next analogRead() rewrites ADMUX, and readAvg() already discards one
+// conversion after the mux change. Out-of-range answers (rail outside
+// roughly 2.8 to 7.5 V) mean the reading is nonsense; fall back to 5.0.
+float readVcc() {
+  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  delay(2);                          // let the bandgap reference settle
+  ADCSRA |= _BV(ADSC);
+  while (bit_is_set(ADCSRA, ADSC)) { }
+  uint16_t adc = ADC;
+  if (adc < 150 || adc > 400) return 5.0f;
+  return BANDGAP_V * 1023.0f / (float)adc;
+}
+
+// pack volts = tap counts * (VCC / 1023) * divider ratio
+float countsToVolts(float rawV, float vcc, uint8_t c) {
+  return rawV * (vcc / 1023.0f) * cal[c].vScale;
+}
 
 void sampleRow(Row &r) {
+  r.vcc = readVcc();
   for (uint8_t c = 0; c < 2; ++c) {
     r.rawI[c]  = readAvg(PIN_I[c], OVERSAMPLE);
     r.rawV[c]  = readAvg(PIN_V[c], OVERSAMPLE);
     r.amps[c]  = (r.rawI[c] - cal[c].iZero) / cal[c].iGain;
-    r.volts[c] = r.rawV[c] * cal[c].vScale;
+    r.volts[c] = countsToVolts(r.rawV[c], r.vcc, c);
   }
 }
 
@@ -169,11 +202,12 @@ void printSettings() {
   Row r; sampleRow(r);
   Serial.println();
   Serial.print(F("  calibrated (EEPROM)     : ")); Serial.println(calibrated ? F("yes") : F("NO, nominal values"));
+  Serial.print(F("  vcc (bandgap)           : ")); Serial.print(r.vcc, 3); Serial.println(F(" V"));
   for (uint8_t c = 0; c < 2; ++c) {
     Serial.print(F("  [")); Serial.print(CH_NAME[c]); Serial.println(']');
     Serial.print(F("  iZero  (counts at 0 A)  : ")); Serial.println(cal[c].iZero, 2);
     Serial.print(F("  iGain  (counts per A)   : ")); Serial.println(cal[c].iGain, 4);
-    Serial.print(F("  vScale (volts per count): ")); Serial.println(cal[c].vScale, 6);
+    Serial.print(F("  vScale (divider ratio)  : ")); Serial.println(cal[c].vScale, 4);
     Serial.print(F("  now rawI / rawV         : ")); Serial.print(r.rawI[c], 1); Serial.print(F(" / ")); Serial.println(r.rawV[c], 1);
     Serial.print(F("  now volts / amps        : ")); Serial.print(r.volts[c], 3); Serial.print(F(" / ")); Serial.println(r.amps[c], 3);
   }
@@ -215,11 +249,13 @@ void doCalAmps(int c, float refAmps) {
 
 void doCalVolts(int c, float refVolts) {
   if (refVolts <= 1.0f) { Serial.println(F("# need a real voltage")); return; }
+  float vcc = readVcc();
   float raw = settle(PIN_V[c]);
   if (raw < 20.0f) { Serial.println(F("# divider reads almost nothing. pack connected?")); return; }
-  cal[c].vScale = refVolts / raw;
-  Serial.print(F("# vScale ")); Serial.print(CH_NAME[c]); Serial.print(F(" = ")); Serial.print(cal[c].vScale, 6);
-  Serial.print(F(" V/count  (nominal ")); Serial.print(V_PER_COUNT, 6); Serial.println(')');
+  cal[c].vScale = refVolts / (raw * vcc / 1023.0f);
+  Serial.print(F("# vScale ")); Serial.print(CH_NAME[c]); Serial.print(F(" = ")); Serial.print(cal[c].vScale, 4);
+  Serial.print(F(" ratio  (nominal ")); Serial.print(V_DIV_RATIO, 4);
+  Serial.print(F(", rail ")); Serial.print(vcc, 3); Serial.println(F(" V)"));
   Serial.println(F("# 'w' to keep it"));
 }
 

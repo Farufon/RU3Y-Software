@@ -152,7 +152,7 @@ measured rate, which is the number to trust.
 | `ms` | `millis()` since boot. Not wall clock. |
 | `lbf` | Change from tare, in pounds force. **Meaningless until calibrated.** |
 | `N` | Same value in newtons (lbf x 4.4482216). |
-| `raw` | Raw HX711 counts, 2 samples. Absolute, not tare-relative. |
+| `raw` | Raw HX711 counts, the same conversions `lbf` was computed from. Absolute, not tare-relative. |
 
 `raw` is the field to trust before calibration and the field to watch for
 drift after.

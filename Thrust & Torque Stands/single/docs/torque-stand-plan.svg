@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="720" viewBox="0 0 1160 720" font-family="Helvetica, Arial, sans-serif">
+<rect width="1160" height="720" fill="#ffffff"/>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L8 5L1 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round"/></marker></defs>
+<text x="30" y="40" font-size="20" fill="#141413" font-weight="bold">Torque Stand - plan view</text>
+<text x="30" y="62" font-size="11.5" fill="#6b6a66">Looking down the rotation axis. Arm reaches 150 mm to a pin; the load cell runs tangentially from that pin to a fixed anchor. Torque = force x arm.</text>
+<rect x="168.0" y="126.0" width="480.0" height="408.0" rx="8" fill="#ffffff" stroke="#6b6a66" stroke-width="1.0" stroke-dasharray="7 5"/>
+<text x="178.0" y="524.0" font-size="10.5" fill="#6b6a66" text-anchor="start">base plate 400 x 340</text>
+<rect x="453.6" y="418.8" width="52.8" height="84.0" rx="4" fill="#F1EFE8" stroke="#888780" stroke-width="1.6"/>
+<circle cx="300" cy="330" r="90.0" fill="#FAF6ED" stroke="#B8860B" stroke-width="1.6"/>
+<rect x="300.0" y="315.0" width="180.0" height="30.0" rx="4" fill="#FAF6ED" stroke="#B8860B" stroke-width="1.6"/>
+<circle cx="300" cy="330" r="55.199999999999996" fill="#F1EFE8" stroke="#888780" stroke-width="1.2"/>
+<circle cx="300" cy="330" r="7.199999999999999" fill="#ffffff" stroke="#141413" stroke-width="1.2"/>
+<line x1="480.0" y1="330.0" x2="480.0" y2="368.4" stroke="#141413" stroke-width="2.4"/>
+<rect x="465.0" y="368.4" width="30.0" height="54.0" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.6"/>
+<line x1="480.0" y1="422.4" x2="480.0" y2="460.79999999999995" stroke="#141413" stroke-width="2.4"/>
+<circle cx="480.0" cy="330.0" r="5" fill="#ffffff" stroke="#141413" stroke-width="1.4"/>
+<circle cx="480.0" cy="460.79999999999995" r="5" fill="#ffffff" stroke="#141413" stroke-width="1.4"/>
+<path d="M259.2 217.2 A 120.0 120.0 0 0 0 259.2 442.8" fill="none" stroke="#D85A30" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="158.0" y="334" font-size="11" fill="#712B13" text-anchor="end" font-weight="bold">rotor reaction</text>
+<text x="158.0" y="349" font-size="10" fill="#6b6a66" text-anchor="end">arm swings away</text>
+<text x="158.0" y="363" font-size="10" fill="#6b6a66" text-anchor="end">cell in tension</text>
+<line x1="300" y1="322" x2="714" y2="120" stroke="#6b6a66" stroke-width="0.8" stroke-dasharray="4 3"/>
+<circle cx="300" cy="322" r="2.2" fill="#6b6a66"/>
+<text x="720" y="124" font-size="11" fill="#141413" text-anchor="start">Loom bore, 12 mm, on the axis. Twisting it here costs nothing.</text>
+<line x1="372.0" y1="276.0" x2="714" y2="165" stroke="#6b6a66" stroke-width="0.8" stroke-dasharray="4 3"/>
+<circle cx="372.0" cy="276.0" r="2.2" fill="#6b6a66"/>
+<text x="720" y="169" font-size="11" fill="#141413" text-anchor="start">Cradle disc, 150 mm. The nacelle bolts to it.</text>
+<line x1="432.0" y1="315.0" x2="714" y2="215" stroke="#6b6a66" stroke-width="0.8" stroke-dasharray="4 3"/>
+<circle cx="432.0" cy="315.0" r="2.2" fill="#6b6a66"/>
+<text x="720" y="219" font-size="11" fill="#141413" text-anchor="start">Torque arm, axis to pin 150 mm. Longer arm = less force at the cell.</text>
+<line x1="495.0" y1="396.0" x2="714" y2="290" stroke="#6b6a66" stroke-width="0.8" stroke-dasharray="4 3"/>
+<circle cx="495.0" cy="396.0" r="2.2" fill="#6b6a66"/>
+<text x="720" y="294" font-size="11" fill="#141413" text-anchor="start">Load cell, 5 kg S-type. Rod ends both ends, pin axes vertical.</text>
+<line x1="506.4" y1="486.0" x2="714" y2="350" stroke="#6b6a66" stroke-width="0.8" stroke-dasharray="4 3"/>
+<circle cx="506.4" cy="486.0" r="2.2" fill="#6b6a66"/>
+<text x="720" y="354" font-size="11" fill="#141413" text-anchor="start">Anchor block, fixed to the base at (150, 109) mm from the axis.</text>
+<line x1="486.0" y1="466.79999999999995" x2="714" y2="400" stroke="#6b6a66" stroke-width="0.8" stroke-dasharray="4 3"/>
+<circle cx="486.0" cy="466.79999999999995" r="2.2" fill="#6b6a66"/>
+<text x="720" y="404" font-size="11" fill="#141413" text-anchor="start">Far pin. Anchor foot needs the plate to reach x = 172, y = 144 mm.</text>
+<text x="720" y="470" font-size="12" fill="#141413" text-anchor="start" font-weight="bold">Cell loading at the 150 mm arm</text>
+<text x="720" y="492" font-size="10.5" fill="#6b6a66" text-anchor="start">Cruise 1000 rpm, 185 W</text>
+<text x="910" y="492" font-size="10.5" fill="#141413" text-anchor="end">1.39 N.m</text>
+<text x="965" y="492" font-size="10.5" fill="#141413" text-anchor="end">9.3 N</text>
+<text x="1015" y="492" font-size="10.5" fill="#141413" text-anchor="end">19 %</text>
+<text x="720" y="509" font-size="10.5" fill="#6b6a66" text-anchor="start">Hover 1800 rpm, 446 W</text>
+<text x="910" y="509" font-size="10.5" fill="#141413" text-anchor="end">1.87 N.m</text>
+<text x="965" y="509" font-size="10.5" fill="#141413" text-anchor="end">12.4 N</text>
+<text x="1015" y="509" font-size="10.5" fill="#141413" text-anchor="end">25 %</text>
+<text x="720" y="526" font-size="10.5" fill="#6b6a66" text-anchor="start">Peak, 1.6x over BEMT</text>
+<text x="910" y="526" font-size="10.5" fill="#141413" text-anchor="end">5.31 N.m</text>
+<text x="965" y="526" font-size="10.5" fill="#141413" text-anchor="end">35.4 N</text>
+<text x="1015" y="526" font-size="10.5" fill="#141413" text-anchor="end">72 %</text>
+<text x="720" y="543" font-size="10.5" fill="#6b6a66" text-anchor="start">Cell full scale</text>
+<text x="910" y="543" font-size="10.5" fill="#141413" text-anchor="end">7.35 N.m</text>
+<text x="965" y="543" font-size="10.5" fill="#141413" text-anchor="end">49.0 N</text>
+<text x="1015" y="543" font-size="10.5" fill="#141413" text-anchor="end">100 %</text>
+<text x="30" y="625" font-size="10.5" fill="#6b6a66" text-anchor="start">Calibrate with a HORIZONTAL force: string off the arm, tangential, over a bearing pulley at the bench edge, known mass on the end.</text>
+<text x="30" y="641" font-size="10.5" fill="#6b6a66" text-anchor="start">Measure the perpendicular distance from the axis to the string with calipers. Torque = m x 9.80665 x r. Send c &lt;that&gt;. The cell&#x27;s own arm</text>
+<text x="30" y="657" font-size="10.5" fill="#6b6a66" text-anchor="start">radius never enters the maths, so an error in it cancels. A weight hung vertically off the arm is a bending moment, not a torque; it does nothing.</text>
+<text x="30" y="673" font-size="10.5" fill="#6b6a66" text-anchor="start">Torque is one-signed in service. Keep the cell always loaded the same way so rod-end clearance never becomes a dead band at the reading.</text>
+</svg>

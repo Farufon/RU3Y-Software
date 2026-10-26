@@ -62,10 +62,11 @@ POST_SPIGOT_DIA = 0.0     # raised register for the post, 0 = none
 # --- TORQUE GEOMETRY -------------------------------------------------------
 ARM_R = 150.0             # axis to load-cell pin.
 #   NOTE: longer arm = LESS force at the cell for the same torque (F = T/r).
-#   Pick it so peak torque lands at 60-80 % of cell full scale. For the 5 kg
-#   cell that would be about 97 mm. 150 mm is deliberate headroom for the
-#   spool-up transient, and it shrinks the relative error in the measured
-#   calibration radius.
+#   Sized against the flight-test figures (446 W hover, 185 W cruise, per
+#   nacelle), see docs/14: hover 1.87 N.m is 25% of the 5 kg cell's full
+#   scale at 150 mm, and the 1.6x-over-BEMT peak case, 5.31 N.m, is 72%.
+#   The 97 mm figure from the old 280 W BEMT numbers would put that peak at
+#   112% and is retracted. Do not shorten the arm.
 ARM_W = 25.0              # arm width
 ARM_T = 14.0              # arm thickness (this is the stiffness that matters)
 
@@ -364,16 +365,22 @@ def run(context):
         build_anchor(root)
         build_reference(root)
 
+        # operating points from docs/14 (flight test, 0.95 ESC x 0.83 motor)
+        nm_cruise, nm_hover, nm_peak = 1.39, 1.87, 5.31
         fs_nm = 5.0 * 9.80665 * ARM_R / 1000.0
         ui.messageBox(
             "torque_cradle built.\n\n"
             "Arm radius      %.0f mm\n"
             "Cell full scale %.2f N.m at 5 kg\n"
-            "Cruise 1.17 N.m %.0f %% of full scale\n"
-            "Peak   3.33 N.m %.0f %% of full scale\n\n"
+            "Cruise %.2f N.m %.0f %% of full scale\n"
+            "Hover  %.2f N.m %.0f %% of full scale\n"
+            "Peak   %.2f N.m %.0f %% of full scale\n\n"
             "Set POST_BOLT_PCD and POST_SPIGOT_DIA at the top of the script,\n"
             "then re-run. Delete component 5_REF before printing."
-            % (ARM_R, fs_nm, 100 * 1.17 / fs_nm, 100 * 3.33 / fs_nm))
+            % (ARM_R, fs_nm,
+               nm_cruise, 100 * nm_cruise / fs_nm,
+               nm_hover, 100 * nm_hover / fs_nm,
+               nm_peak, 100 * nm_peak / fs_nm))
 
     except Exception:
         if ui:

@@ -56,11 +56,13 @@ import os
 import queue
 import re
 import shutil
+import socket
 import statistics
 import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from collections import deque
 from datetime import datetime
 import errno
@@ -72,7 +74,7 @@ try:
 except ImportError:
     sys.exit("pyserial not installed.  pip3 install pyserial")
 
-VERSION = "2026-10-15.3"
+VERSION = "2026-10-26.2"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 RUN_LOG_FIELDS = [
@@ -80,7 +82,10 @@ RUN_LOG_FIELDS = [
     "collective_deg", "servo_us", "throttle_pct", "thrust_lbf",
     "volts", "amps", "pack_soc", "notes",
     "rpm_port", "rpm_stbd",          # tach averages over the capture window
-    "volts_stbd", "amps_stbd",       # second pack, when the 2-channel meter is in
+    "volts_stbd", "amps_stbd",       # second pack, when both meter channels are live
+    "watts",                         # mean of instantaneous V*I from the meter (ripple-correct);
+                                     # volts*amps when typed. reduce.py prefers this column.
+    "power_ch",                      # which meter channel fed volts/amps: port, stbd, or blank if typed
 ]
 
 RPM_LABELS = ("port", "stbd")
@@ -148,6 +153,9 @@ class RpmChannel:
         self.proc = None
         self.running = False
         self.error = ""
+        self.noise = ""                # last line we could not parse; the reader's
+                                       # stderr is merged into stdout so this is
+                                       # usually its complaint when it dies
         self.header = ""
         self.lock = threading.Lock()
         self.samples = deque(maxlen=6000)      # (wall_epoch, edges, motor_rpm, rotor_rpm)
@@ -165,8 +173,12 @@ class RpmChannel:
     def _loop(self):
         while True:
             try:
+                # stderr merged into stdout: reading stdout to EOF and stderr
+                # afterwards would deadlock if the reader ever filled the
+                # stderr pipe, and the merged lines fall through _line() to
+                # self.noise anyway
                 self.proc = subprocess.Popen(
-                    self.argv(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    self.argv(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     text=True, bufsize=1)
             except Exception as exc:
                 self.error = str(exc)
@@ -175,12 +187,12 @@ class RpmChannel:
                 continue
             self.running = True
             self.error = ""
+            self.noise = ""
             for line in self.proc.stdout:
                 self._line(line.rstrip("\r\n"))
-            err = (self.proc.stderr.read() or "").strip()
             self.proc.wait()
             self.running = False
-            self.error = err.splitlines()[-1] if err else f"reader exited {self.proc.returncode}"
+            self.error = self.noise or f"reader exited {self.proc.returncode}"
             time.sleep(3.0)
 
     def _line(self, line):
@@ -192,6 +204,7 @@ class RpmChannel:
             return
         m = self.LINE.match(line)
         if not m:
+            self.noise = line.strip()
             return
         now = time.time()
         _t, edges, _eps, motor, _rotor_from_binary = m.groups()
@@ -485,6 +498,7 @@ class Stand:
         self.opened_at = 0.0
         self.cal_asked = 0
         self.marks = []
+        self.rpm_active = "port"       # the tach that last saw a rotor turning; see _rpm_ch
 
         self.outq = queue.Queue()
 
@@ -542,10 +556,48 @@ class Stand:
             return ""
         return f"{last[3]:.0f}"
 
+    RPM_SPINNING = 30.0     # rotor rpm below this is a reader counting noise, not a rotor
+
+    def _rpm_ch(self):
+        """Which tach is the nacelle under test.
+
+        rpm_reader_static prints a row every window whether or not anything
+        is turning, so a plugged-in tach on an idle nacelle looks exactly like
+        a live one except that its rpm is zero. Pick the channel that is
+        turning now; with both turning (spin test) the faster one, which is
+        arbitrary but stable. When nothing turns, keep the last answer, so the
+        single-nacelle page does not flip channels every time the motor stops.
+        """
+        now = time.time()
+        turning = []
+        for label, ch in self.rpm.items():
+            last = ch.last()
+            if last and now - last[0] < 1.5 and last[3] > self.RPM_SPINNING:
+                turning.append((last[3], label))
+        if turning:
+            self.rpm_active = max(turning)[1]
+        elif self.rpm_active not in self.rpm and self.rpm:
+            self.rpm_active = next(iter(self.rpm))
+        return self.rpm_active if self.rpm else None
+
+    def _power_ch(self):
+        """Which meter channel is the pack under test.
+
+        One nacelle is on the stand at a time, so the channel whose divider
+        sees a pack is the one to log, the same way capture takes whichever
+        tach is alive. Both alive is a two-nacelle spin test: port goes in the
+        main columns and stbd in the _stbd columns. Neither alive: port, so
+        the row still records whatever the meter saw.
+        """
+        if not self.power:
+            return None
+        alive = [ch for ch in ("port", "stbd") if self.power.alive(ch)]
+        return alive[0] if len(alive) == 1 else "port"
+
     def _power_now(self):
         if not self.power:
             return "", ""
-        last = self.power.last("port")
+        last = self.power.last(self._power_ch())
         if not last or time.time() - last[0] > 1.0:
             return "", ""
         return f"{last[2]:.2f}", f"{last[3]:.2f}"
@@ -604,6 +656,9 @@ class Stand:
             now = time.time()
             _, ms, lbf, newton, raw = m.groups()
             rec = (now, int(ms), float(lbf), float(newton), int(raw))
+            if self.cal.get("ready") is False:
+                self.cal["ready"] = True       # the cell is answering again
+                self.error = ""
             with self.lock:
                 self.samples.append(rec)
                 self.arrivals.append(now)
@@ -629,6 +684,9 @@ class Stand:
             self.cal["tare"] = _num(line)
         elif "hx711 ready" in low:
             self.cal["ready"] = "yes" in low
+        elif "hx711 timeout" in low or "hx711 not responding" in low:
+            self.cal["ready"] = False      # firmware gave up waiting for DT; the page goes red
+            self.error = line.lstrip("! ").strip()
         elif "calfactor =" in low:
             self.cal["factor"] = _num(line)
 
@@ -694,17 +752,24 @@ class Stand:
             a = ch.average(secs)
             rpm_avg[label] = a["mean_rotor"] if a else None
         typed_actual = _f(body.get("head_rpm_actual"))
-        live_rpms = [v for v in (rpm_avg.get("port"), rpm_avg.get("stbd")) if v is not None]
-        # one nacelle on the stand at a time, so whichever tach is alive is the
-        # head under test; two alive means a spin test, take the mean
+        # one nacelle on the stand at a time, so whichever tach sees a rotor
+        # turning is the head under test; two turning means a spin test, take
+        # the mean. A tach that is plugged in but idle still prints rows (all
+        # zero) and must not be averaged in, or the result is half the RPM.
+        live_rpms = [v for v in (rpm_avg.get("port"), rpm_avg.get("stbd"))
+                     if v is not None and v > self.RPM_SPINNING]
         auto_actual = statistics.fmean(live_rpms) if live_rpms else None
         actual = typed_actual if typed_actual is not None else auto_actual
 
-        # pack volts and amps: typed wins, else the power meter's average
+        # pack volts and amps: typed wins, else the power meter's average on
+        # the channel that has a pack on it (see _power_ch)
         typed_v, typed_a = _f(body.get("volts")), _f(body.get("amps"))
-        pwr = self.power.average(secs, "port") if self.power else None
-        pwr_s = self.power.average(secs, "stbd") if (self.power and self.power.alive("stbd")) else None
+        pch = self._power_ch()
+        pwr = self.power.average(secs, pch) if self.power else None
+        pwr_s = (self.power.average(secs, "stbd")
+                 if (self.power and pch == "port" and self.power.alive("stbd")) else None)
         watts_s = pwr_s["mean_w"] if pwr_s else None
+        typed_any = typed_v is not None or typed_a is not None
         volts = typed_v if typed_v is not None else (pwr["mean_v"] if pwr else None)
         amps = typed_a if typed_a is not None else (pwr["mean_a"] if pwr else None)
         # watts straight from the meter is the mean of v*i, which is the right
@@ -733,6 +798,8 @@ class Stand:
             "rpm_stbd": f"{rpm_avg['stbd']:.0f}" if rpm_avg.get("stbd") is not None else "",
             "volts_stbd": f"{pwr_s['mean_v']:.2f}" if pwr_s else "",
             "amps_stbd": f"{pwr_s['mean_a']:.2f}" if pwr_s else "",
+            "watts": f"{watts:.1f}" if watts is not None else "",
+            "power_ch": "" if typed_any else (pch if pwr else ""),
         })
 
         with open(self.runlog_path, "a", newline="") as f:
@@ -757,7 +824,7 @@ class Stand:
         return {"ok": True, "avg": avg, "row": row, "rpm_actual": actual,
                 "rpm_source": "typed" if typed_actual is not None else ("tach" if auto_actual is not None else "none"),
                 "watts": watts, "watts_stbd": watts_s,
-                "power_source": "typed" if (typed_v is not None or typed_a is not None) else ("meter" if pwr else "none")}
+                "power_source": "typed" if typed_any else (f"meter {pch}" if pwr else "none")}
 
 
 def _num(line):
@@ -780,9 +847,20 @@ def _s(v):
 
 # ------------------------------------------------------------------ web
 
+# What the page may send to the boards. The server binds every interface so an
+# iPad on the VPN can reach it, which also means anything on that network can
+# POST here. Nothing here can spin the motor, but a stray 't', 'f' or 'c' in
+# the middle of a staircase would corrupt the run with no trace, so only the
+# firmware's own command set gets through, and nothing else.
+CMD_OK = re.compile(r"^(?:[htrsfzdw?]|c\s*\d*\.?\d+)$", re.I)
+PCMD_OK = re.compile(r"^(?:[hrszdwx]|k[av]\s*[psPS]\s*\d*\.?\d+)$")
+
+
 class Handler(BaseHTTPRequestHandler):
     stand = None
     curves = {}
+    layout = "dual"        # "single": one nacelle on the bench, one rpm and one power card
+                           # "dual":   port and stbd side by side, for two-nacelle spin tests
 
     def log_message(self, *a):
         pass
@@ -831,6 +909,9 @@ class Handler(BaseHTTPRequestHandler):
                 "rpm_log": os.path.basename(s.rpm[next(iter(s.rpm))].logpath) if s.rpm else "",
                 "power": s.power.state() if s.power else None,
                 "power_log": os.path.basename(s.power.logpath) if s.power else "",
+                "layout": self.layout,
+                "active_rpm": s._rpm_ch(),       # the tach the single layout shows
+                "active_power": s._power_ch(),   # the meter channel it shows
             }))
         return self._send(404, json.dumps({"error": "not found"}))
 
@@ -842,7 +923,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, json.dumps({"ok": False, "why": "bad json"}))
         path = self.path.split("?")[0]
         if path == "/api/cmd":
-            self.stand.send(str(body.get("cmd", "")))
+            cmd = str(body.get("cmd", "")).strip()
+            if not CMD_OK.match(cmd):
+                return self._send(400, json.dumps({"ok": False, "why": f"not a thrust-stand command: {cmd!r}"}))
+            self.stand.send(cmd)
             return self._send(200, json.dumps({"ok": True}))
         if path == "/api/rpmcfg":
             chans = list(self.stand.rpm.values())
@@ -856,7 +940,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/pcmd":
             if not self.stand.power:
                 return self._send(200, json.dumps({"ok": False, "why": "no power meter"}))
-            self.stand.power.send(str(body.get("cmd", "")))
+            cmd = str(body.get("cmd", "")).strip()
+            if not PCMD_OK.match(cmd):
+                return self._send(400, json.dumps({"ok": False, "why": f"not a power-meter command: {cmd!r}"}))
+            self.stand.power.send(cmd)
             return self._send(200, json.dumps({"ok": True}))
         if path == "/api/mark":
             return self._send(200, json.dumps(self.stand.mark(body)))
@@ -880,7 +967,12 @@ PAGE = r"""<!doctype html>
     margin:0 0 10px;font-weight:600}
  .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
  .grid3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr);gap:14px}
- @media(max-width:860px){.grid,.grid3{grid-template-columns:1fr}}
+ /* single-nacelle layout: the stbd cards go away and the one number card
+    takes a narrower left column beside its strip chart */
+ body.single .dual-only{display:none}
+ body.single .grid3{grid-template-columns:minmax(0,1fr) minmax(0,2.6fr)}
+ body.single .grid.top{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr)}
+ @media(max-width:860px){.grid,.grid3,body.single .grid3,body.single .grid.top{grid-template-columns:1fr}}
  .big.mid{font-size:48px}
  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
  .big{font:600 68px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.02em}
@@ -918,7 +1010,7 @@ PAGE = r"""<!doctype html>
        <div class="sub" id="clockdate"> </div></div>
 </div>
 
-<div class="grid">
+<div class="grid top">
   <div class="card">
     <h2>Thrust</h2>
     <div><span class="big" id="lbf">--</span><span class="unit">lbf</span></div>
@@ -942,11 +1034,11 @@ PAGE = r"""<!doctype html>
 
 <div class="grid3" style="margin-top:14px">
   <div class="card">
-    <h2><span class="dot" id="dot_port"></span>Port rotor RPM</h2>
+    <h2><span class="dot" id="dot_port"></span><span id="rpm_port_title">Port rotor RPM</span></h2>
     <div><span class="big mid" id="rpm_port">--</span><span class="unit">rpm</span></div>
     <div class="sub" id="rpm_port_detail"> </div>
   </div>
-  <div class="card">
+  <div class="card dual-only">
     <h2><span class="dot" id="dot_stbd"></span>Stbd rotor RPM</h2>
     <div><span class="big mid" id="rpm_stbd">--</span><span class="unit">rpm</span></div>
     <div class="sub" id="rpm_stbd_detail"> </div>
@@ -967,11 +1059,11 @@ PAGE = r"""<!doctype html>
 
 <div class="grid3" style="margin-top:14px">
   <div class="card">
-    <h2><span class="dot" id="dot_pwr_port"></span>Port pack power</h2>
+    <h2><span class="dot" id="dot_pwr_port"></span><span id="pw_title_port">Port pack power</span></h2>
     <div><span class="big mid" id="pw_w_port">--</span><span class="unit">W</span></div>
     <div class="sub" id="pw_detail_port"> </div>
   </div>
-  <div class="card">
+  <div class="card dual-only">
     <h2><span class="dot" id="dot_pwr_stbd"></span>Stbd pack power</h2>
     <div><span class="big mid" id="pw_w_stbd">--</span><span class="unit">W</span></div>
     <div class="sub" id="pw_detail_stbd"> </div>
@@ -979,7 +1071,7 @@ PAGE = r"""<!doctype html>
   <div class="card">
     <h2>Watts and amps, last 90 seconds</h2>
     <canvas id="pwstrip" data-h="150"></canvas>
-    <div class="sub" style="margin-top:6px"><span style="color:#e05a5a">&#9632;</span> port W   <span style="color:#4ec9a0">&#9632;</span> stbd W   <span style="color:#e05a5a">&#8211; &#8211;</span> port A x10   <span style="color:#4ec9a0">&#8211; &#8211;</span> stbd A x10</div>
+    <div class="sub" id="pw_legend" style="margin-top:6px"><span style="color:#e05a5a">&#9632;</span> port W   <span style="color:#4ec9a0">&#9632;</span> stbd W   <span style="color:#e05a5a">&#8211; &#8211;</span> port A x10   <span style="color:#4ec9a0">&#8211; &#8211;</span> stbd A x10</div>
   </div>
 </div>
 
@@ -1050,11 +1142,25 @@ PAGE = r"""<!doctype html>
 
 </div><script>
 let S={},B={},marks=[];
+// layout comes from the server (--single / --dual). single: the stbd cards are
+// hidden and the port-slot cards show whichever channel is active, with the
+// channel named in the title. CHCOL keeps a channel's colour the same in both.
+let LAYOUT='dual';
+const CHCOL={port:'#e05a5a',stbd:'#4ec9a0'};
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+function applyLayout(s){
+  const l=s.layout||'dual';
+  if(l!==LAYOUT){LAYOUT=l;document.body.classList.toggle('single',l==='single');}
+}
+// which channels each strip chart draws: [[channel, colour], ...]
+const rpmChans=()=>LAYOUT==='single'?[[S.active_rpm||'port',CHCOL[S.active_rpm||'port']]]:[['port',CHCOL.port],['stbd',CHCOL.stbd]];
+const pwChans=()=>LAYOUT==='single'?[[S.active_power||'port',CHCOL[S.active_power||'port']]]:[['port',CHCOL.port],['stbd',CHCOL.stbd]];
 
 const post=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},
                           body:JSON.stringify(b||{})}).then(r=>r.json());
-const cmd=c=>post('/api/cmd',{cmd:c});
-const pcmd=c=>post('/api/pcmd',{cmd:c});
+const rejected=r=>{if(r&&r.ok===false&&r.why)alert(r.why);return r;};
+const cmd=c=>post('/api/cmd',{cmd:c}).then(rejected);
+const pcmd=c=>post('/api/pcmd',{cmd:c}).then(rejected);
 function setRatio(){
   const i=document.getElementById('ratio'); const r=parseFloat(i.value);
   if(!(r>0)){i.value='';return;}
@@ -1138,7 +1244,9 @@ function strip(){
 
 function rpmstrip(){
   const c=document.getElementById('rpmstrip');const [x,w,h]=fit(c);
-  const R=S.rpm||{}; const chans=[['port','#e05a5a'],['stbd','#4ec9a0']];
+  const R=S.rpm||{}; const chans=rpmChans();
+  document.getElementById('rpm_legend').innerHTML = chans.map(([k,col])=>
+    `<span style="color:${col}">&#9632;</span> ${k}${LAYOUT==='single'?' tach':''}`).join('   ');
   let all=[]; chans.forEach(([k])=>{if(R[k]&&R[k].series)all=all.concat(R[k].series.map(p=>p[1]));});
   if(!all.length){x.clearRect(0,0,w,h);return;}
   let hi=Math.max(...all,100); hi=Math.ceil(hi/250)*250;
@@ -1152,7 +1260,9 @@ function rpmstrip(){
 function pwstrip(){
   const c=document.getElementById('pwstrip');const [x,w,h]=fit(c);
   const P=S.power; if(!P){x.clearRect(0,0,w,h);return;}
-  const chs=[['port','#e05a5a'],['stbd','#4ec9a0']].filter(([k])=>P.ch[k].alive&&P.ch[k].series.length);
+  document.getElementById('pw_legend').innerHTML = pwChans().map(([k,col])=>
+    `<span style="color:${col}">&#9632;</span> ${k} W   <span style="color:${col}">&#8211; &#8211;</span> ${k} A x10`).join('   ');
+  const chs=pwChans().filter(([k])=>P.ch[k].alive&&P.ch[k].series.length);
   if(!chs.length){x.clearRect(0,0,w,h);return;}
   let hi=100;
   chs.forEach(([k])=>P.ch[k].series.forEach(p=>{hi=Math.max(hi,p[1],p[2]*10);}));
@@ -1170,9 +1280,16 @@ function pwstrip(){
 
 function pwPanel(){
   const P=S.power, t=document.getElementById('pterm'), cal=document.getElementById('pw_cal');
-  ['port','stbd'].forEach(k=>{
-    const dot=document.getElementById('dot_pwr_'+k), v=document.getElementById('pw_w_'+k),
-          d=document.getElementById('pw_detail_'+k);
+  // [data channel, DOM slot]: dual fills both slots from their own channel;
+  // single fills the port slot from the active channel and names it
+  const slots=LAYOUT==='single'?[[S.active_power||'port','port']]:[['port','port'],['stbd','stbd']];
+  const title=document.getElementById('pw_title_port');
+  title.textContent = LAYOUT==='single'
+    ? `Pack power   (meter channel ${S.active_power||'port'}, ${(S.active_power||'port')==='port'?'A0/A1':'A2/A3'})`
+    : 'Port pack power';
+  slots.forEach(([k,slot])=>{
+    const dot=document.getElementById('dot_pwr_'+slot), v=document.getElementById('pw_w_'+slot),
+          d=document.getElementById('pw_detail_'+slot);
     if(!P){dot.style.background='#3a4152';v.textContent='--';d.textContent='no --power-port; type volts and amps at capture';return;}
     const C=P.ch[k], L=C.last, a=C.avg5, s=C.settings||{};
     dot.style.background=P.connected?(C.alive?'var(--good)':'var(--warn)'):'var(--bad)';
@@ -1193,9 +1310,14 @@ function pwPanel(){
   t.textContent=(P.banner||[]).join('\n'); t.scrollTop=t.scrollHeight;
 }
 
-function rpmPanel(k){
-  const R=(S.rpm||{})[k]; const dot=document.getElementById('dot_'+k),
-        v=document.getElementById('rpm_'+k), d=document.getElementById('rpm_'+k+'_detail');
+function rpmPanel(k,slot){
+  // k: data channel. slot: which card (port or stbd ids). In the single
+  // layout the active channel is shown in the port slot and named in the title.
+  slot=slot||k;
+  const R=(S.rpm||{})[k]; const dot=document.getElementById('dot_'+slot),
+        v=document.getElementById('rpm_'+slot), d=document.getElementById('rpm_'+slot+'_detail');
+  if(slot==='port') document.getElementById('rpm_port_title').textContent =
+    LAYOUT==='single' ? `Rotor RPM   (${k} tach)` : 'Port rotor RPM';
   if(!R){dot.style.background='#3a4152';v.textContent='--';d.textContent='rpm off (--no-rpm)';return;}
   const live=R.running&&R.last&&R.last.age_s<1.5;
   dot.style.background=R.running?(live?'var(--good)':'var(--warn)'):'var(--bad)';
@@ -1291,7 +1413,10 @@ function tick(){
       +`<td>${k.amps??''}${k.amps_stbd!=null?' / '+k.amps_stbd:''}</td>`
       +`<td>${k.height_mm??''}</td></tr>`).join('');
 
-    rpmPanel('port'); rpmPanel('stbd'); pwPanel();
+    applyLayout(s);
+    if(LAYOUT==='single'){rpmPanel(s.active_rpm||'port','port');}
+    else{rpmPanel('port'); rpmPanel('stbd');}
+    pwPanel();
     const ri=document.getElementById('ratio');
     if(s.rpm_ratio!=null && document.activeElement!==ri) ri.value=s.rpm_ratio;
     strip(); rpmstrip(); pwstrip(); power();
@@ -1314,6 +1439,27 @@ window.addEventListener('resize',()=>{strip();rpmstrip();pwstrip();power();});
 
 
 # ------------------------------------------------------------------ main
+
+
+def lan_addresses():
+    """This Mac's own IPv4 addresses, for the dashboard link from other devices.
+    The UDP connect sends nothing; it just asks the kernel which interface
+    would route out, which is the address the iPad can reach."""
+    found = []
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("10.255.255.255", 1))
+        found.append(s.getsockname()[0])
+        s.close()
+    except Exception:
+        pass
+    try:
+        for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
+            if not ip.startswith("127.") and ip not in found:
+                found.append(ip)
+    except Exception:
+        pass
+    return found
 
 
 def serve_on(bind, first_port, handler, pinned, tries=20):
@@ -1353,6 +1499,16 @@ def main():
     ap.add_argument("--logdir", default=os.path.join(HERE, "logs"))
     ap.add_argument("--radius", type=float, default=457.0, help="rotor radius mm, for z/R")
     ap.add_argument("--list", action="store_true", help="list serial ports and exit")
+    ap.add_argument("--open", action="store_true",
+                    help="open the dashboard in the default browser once the server is up "
+                         "(start.sh uses this, so it always lands on the port actually bound)")
+    lay = ap.add_mutually_exclusive_group()
+    lay.add_argument("--single", dest="layout", action="store_const", const="single", default="dual",
+                     help="one nacelle on the bench: one RPM card and one power card, fed by "
+                          "whichever tach is turning and whichever meter channel has a pack. "
+                          "The sibling package 'single' defaults to this.")
+    lay.add_argument("--dual", dest="layout", action="store_const", const="dual",
+                     help="port and stbd cards side by side, for two-nacelle spin tests (default here)")
     g = ap.add_argument_group("rpm tachs (FT232H, rpm/rpm_reader_static)")
     g.add_argument("--no-rpm", action="store_true", help="do not start the tach readers")
     g.add_argument("--rpm-bin", help="path to rpm_reader_static (default: rpm/ beside tools/)")
@@ -1431,6 +1587,7 @@ def main():
 
     Handler.stand = Stand(port, args.baud, args.logdir, args.radius, rpm, power)
     Handler.curves = curves
+    Handler.layout = args.layout
 
     pinned = any(a.startswith("--http-port") for a in sys.argv[1:])
     srv, http_port = serve_on(args.bind, args.http_port, Handler, pinned)
@@ -1449,12 +1606,23 @@ def main():
         print("          thrust works without it; the RPM panels will say reader down")
     print(f"power     {args.power_port}" if args.power_port
           else "power     off (no --power-port); volts and amps typed by hand")
+    print("layout    single nacelle: one rpm card, one power card (--dual for port/stbd)"
+          if args.layout == "single" else "layout    dual: port and stbd side by side")
     if http_port != args.http_port:
         print(f"note      {args.http_port} was busy, using {http_port}")
-    print(f"open      http://localhost:{http_port}")
+    print()
+    print("=" * 60)
+    print(f"DASHBOARD   http://localhost:{http_port}")
     if args.bind == "0.0.0.0":
-        print(f"          or http://<this-mac-vpn-address>:{http_port} from an iPad")
+        for ip in lan_addresses():
+            print(f"            http://{ip}:{http_port}   (iPad or any device on the LAN / VPN)")
+    print("=" * 60)
     print("ctrl-C to stop")
+    if args.open:
+        try:
+            webbrowser.open(f"http://localhost:{http_port}")
+        except Exception as exc:
+            print(f"note      could not open the browser: {exc}")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

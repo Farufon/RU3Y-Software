@@ -1,7 +1,8 @@
 #!/bin/bash
 # start.sh - find every board and start live.py with all of them.
 #
-#   bash tools/start.sh              # probe, then launch
+#   bash tools/start.sh              # probe, then launch (port and stbd dashboard)
+#   bash tools/start.sh --single     # one-nacelle layout; the sibling package 'single' defaults to it
 #   bash tools/start.sh --no-probe   # launch from the last ports.json
 #   bash tools/start.sh --no-rpm     # skip the tach readers
 #
@@ -16,13 +17,19 @@ ROOT="$(cd .. && pwd)"
 VENV="$HOME/venvs/forcerigs/bin/activate"
 
 PROBE=1
+HTTP=8765
 EXTRA=()
+prev=""
 for a in "$@"; do
     case "$a" in
         --no-probe) PROBE=0 ;;
-        *) EXTRA+=("$a") ;;
+        --http-port=*) HTTP="${a#--http-port=}"; EXTRA+=("$a") ;;
+        *) [ "$prev" = "--http-port" ] && HTTP="$a"; EXTRA+=("$a") ;;
     esac
+    prev="$a"
 done
+# macOS ships bash 3.2, where "${EXTRA[@]}" on an empty array trips `set -u`
+# ("unbound variable"). This expands to nothing when the array is empty.
 
 if [ -f "$VENV" ]; then
     # shellcheck disable=SC1090
@@ -74,8 +81,15 @@ echo "== launching"
 echo "   thrust  $THRUST"
 echo "   power   $POWER"
 echo "   rpm     port=$RPMP  stbd=$RPMS"
-echo "   python3 live.py ${ARGS[*]} ${EXTRA[*]:-}"
-echo "   dashboard: http://localhost:8765   (Ctrl-C here to stop)"
+LANIP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+echo "   python3 live.py --open ${ARGS[*]} ${EXTRA[*]:-}"
 echo
-( sleep 4; open "http://localhost:8765" ) >/dev/null 2>&1 &
-exec python3 live.py "${ARGS[@]}" "${EXTRA[@]}"
+echo "   DASHBOARD   http://localhost:$HTTP"
+[ -n "$LANIP" ] && echo "               http://$LANIP:$HTTP   (iPad or any device on the LAN / VPN)"
+echo "   live.py prints the same link once it has bound the port; if $HTTP is busy it"
+echo "   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop."
+echo
+# live.py opens the browser itself once it has bound a port, so this lands on
+# the right one when 8765 is busy and it steps to 8766, or when --http-port
+# was passed through.
+exec python3 live.py --open "${ARGS[@]}" ${EXTRA[@]+"${EXTRA[@]}"}

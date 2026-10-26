@@ -16,6 +16,20 @@ bash tools/start.sh
 Leave that terminal open; it is `live.py`. `Ctrl-C` stops everything.
 The dashboard opens in the browser on its own (http://localhost:8765).
 
+The dashboard comes up with the port and stbd cards side by side. For one
+nacelle on the bench there is a **single-nacelle** layout: one thrust card,
+one rotor RPM card, one pack power card, each beside its strip chart. The RPM
+card shows whichever tach sees a rotor turning and the power card whichever
+meter channel has a pack on it; the card title names the channel. Both
+FT232Hs and both ACS724 channels can stay plugged in.
+
+```
+bash tools/start.sh --single
+```
+
+The sibling package `../single` is this same code with that layout as its
+default; use it on the bench and keep this one for two-nacelle work.
+
 Once the boards are known:
 
 ```
@@ -26,7 +40,9 @@ skips the probing step (about 3 s per Nano) and launches from the last
 `tools/ports.json`. Use this when nothing has been plugged or unplugged.
 
 Anything else on the command line is passed to `live.py` unchanged, so
-`bash tools/start.sh --rpm-poles 84` works.
+`bash tools/start.sh --rpm-window 0.1` works. (`live.py --open` is added by
+`start.sh` itself, so the browser lands on whatever port `live.py` actually
+bound, including when 8765 is busy and it steps to 8766.)
 
 ## What it does, in order
 

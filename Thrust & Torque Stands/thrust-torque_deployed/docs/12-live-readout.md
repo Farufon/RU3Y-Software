@@ -91,8 +91,15 @@ Useful flags:
 | `--bind` | `0.0.0.0` | `127.0.0.1` for local only |
 | `--logdir` | `tools/logs/` | where the CSVs go |
 | `--radius` | 457.0 | rotor radius mm, used for `z_over_R` |
+| `--rpm-port` / `--rpm-stbd` | `0` / `1` | FT232H index or USB serial per nacelle |
+| `--rpm-poles` | 28 | MN6007 II is 24N28P |
+| `--rpm-ratio` | 3.0 or last set on page | motor:rotor; also a box on the page |
+| `--rpm-window` | 0.05 | seconds per rpm sample |
+| `--no-rpm` | | thrust only, no tach readers |
+| `--power-port` | | serial device of the power-meter Nano (doc 17); omit to type volts/amps |
 
-Nothing here touches the ESC or the motor. It reads the cell and writes files.
+Nothing here touches the ESC or the motor. It reads the cell and the tachs and
+writes files.
 
 To leave the environment, `deactivate`. Closing the Terminal window does the
 same thing.
@@ -119,10 +126,21 @@ sign, so recalibrating undoes a previous flip. The settings line under the live
 number shows `sign` at all times; check it reads `-1` before a run. Doc 05 has
 the full argument.
 
-**Capture point.** Fill in height, RPM, collective, throttle, volts, amps, then
-press Capture. It averages the last 5 seconds of thrust and appends one row to
-`run-log.csv` in the schema `reduce.py` already expects. `z_over_R` is computed
-for you.
+**Rotor RPM, port and starboard.** Two panels and a strip chart fed by the
+FT232H tachs on the Castle ESCs. Rotor rpm big, motor rpm and edges per window
+under it, 5 s mean and sd. Red is port, green is starboard. Doc 16 covers
+building the reader, picking boards by serial, and what the dots mean.
+
+**Pack power.** With `--power-port`, a third card shows watts, volts and
+amps from the hall-sensor Nano with its own strip and a console for the
+calibration commands. Doc 17.
+
+**Capture point.** Fill in height, RPM cmd, collective, throttle, then press
+Capture. Volts and amps fill from the power meter if it is running, else
+type them. It averages the last 5 seconds of thrust and of each tach,
+appends one row to `run-log.csv` in the schema `reduce.py` already expects,
+and fills `head_rpm_actual` from whichever tach is live unless you typed one.
+`z_over_R` is computed for you.
 
 **Power chart.** BEMT-predicted electrical watts against thrust for 1000
 through 2000 rpm, the 7.5 lbf target line, an amber diamond at the flight-test
@@ -141,6 +159,12 @@ wall-clock timestamp alongside the board's `millis()`. New file each launch.
 
 `logs/run-log.csv` gets one row per captured grid point. Appended across
 launches, so it accumulates. Feed it straight to `reduce.py`.
+
+`logs/rpm-YYYYmmdd-HHMMSS.csv` gets every tach row from both boards. New file
+each launch. See doc 16.
+
+`logs/power-YYYYmmdd-HHMMSS.csv` gets every power-meter row. New file each
+launch. See doc 17.
 
 ## Volts and amps are typed in by hand
 
@@ -193,6 +217,8 @@ steps, ground-effect entry.
 - **The port number is not stable.** macOS assigns `cu.usbserial-NNNN` per
   physical socket and per enumeration, so it moves when you replug or change
   sockets. Nothing is wrong. Re-run `--list`.
+- The tach readers are child processes of `live.py`. Ctrl-C stops them with it;
+  if one lingers, `bash tools/stop.sh` kills it.
 - Only one program can hold the port. Quit the Arduino Serial Monitor before
   starting `live.py`, and stop `live.py` before uploading firmware.
 - Opening the port resets the board, which re-tares against whatever is sitting
@@ -201,3 +227,13 @@ steps, ground-effect entry.
   reset and re-tared. If a run looks discontinuous, that is why. Re-tare.
 - `sd` in the statistics panel is population standard deviation over the
   window, not a measurement uncertainty. Drift shows up in it too.
+
+
+## Time-of-day clock (2026-10-15.1)
+
+The header shows the Mac's local time of day as HH:MM:SS.tenths, in the same size as the thrust and RPM readouts. It is the same clock that stamps `iso_time` in every log row, so a camera pointed at the screen gives video a reference that lines up with the CSVs to about a tenth of a second (display refresh 100 ms; log rows carry milliseconds).
+
+
+## Two-channel power (2026-10-15.3)
+
+The power meter now reads both packs on one Nano (port A0/A1, stbd A2/A3). Two power cards, one strip with both channels, calibration commands take a channel letter: `ka p 18.4`, `kv s 24.87`. See docs/17.

@@ -1,0 +1,13 @@
+{
+  "nanos": {
+    "thrust": "/dev/cu.usbserial-1434110",
+    "power": "/dev/cu.usbserial-14341440"
+  },
+  "rpm": {
+    "port": "0",
+    "stbd": "1"
+  },
+  "unknown": [],
+  "probed": "2026-10-23 13:08:42",
+  "rpm_note": "assigned by you just now; serials are blank so these are USB indices and follow the hub socket"
+}

@@ -30,7 +30,7 @@
 #
 # Include the FLAT PITCH point at each RPM: thrust near zero, watts = drivetrain drag.
 #
-height_mm,z_over_R,head_rpm_cmd,head_rpm_actual,collective_deg,servo_us,throttle_pct,thrust_lbf,volts,amps,pack_soc,notes
+height_mm,z_over_R,head_rpm_cmd,head_rpm_actual,collective_deg,servo_us,throttle_pct,thrust_lbf,volts,amps,pack_soc,notes,rpm_port,rpm_stbd
 229,0.50,1800,,,,,,,,,flat pitch reference
 229,0.50,1800,,4.0,,,,,,,
 229,0.50,1800,,7.0,,,,,,,

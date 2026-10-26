@@ -39,6 +39,18 @@ If there is a `nacelle-thrust-stand-live 2` (or `3`) lying around from an
 earlier Finder unpack, delete it too. It is a full copy of some older version
 and will only cause this again.
 
+## Build the tach reader once
+
+`live.py` spawns `rpm/rpm_reader_static` for the two FT232H boards. It is a
+compiled binary and is not in the zip, so after unpacking:
+
+```
+bash nacelle-thrust-stand-live/rpm/scripts/build_static.sh
+```
+
+Needs the Apple command line tools (`clang`). If you skip this, thrust still
+works and the RPM panels say `reader down`. Doc 16 has the rest.
+
 ## First run after updating
 
 ```

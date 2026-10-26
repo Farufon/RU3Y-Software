@@ -139,8 +139,10 @@ screen -L -Logfile ~/thrust-run.txt /dev/cu.usbserial-1480 115200
 - **CoolTerm** (free, GUI): scrollback, logging, timestamps. Easier than
   `screen` for long runs.
 - **`tools/live.py`** is the best option in this branch: browser dashboard,
-  strip chart, logging, BEMT overlay, and it works from an iPad over the VPN.
-  See `docs/12-live-readout.md`.
+  strip chart, logging, BEMT overlay, port and starboard rotor RPM from the
+  tachs, pack power from the hall-sensor Nano, and it works from an iPad over
+  the VPN. See `docs/12-live-readout.md`, `docs/16-rpm-tach.md` and
+  `docs/17-power-meter.md`.
 - **`tools/bench.py`** is the guided grid-capture session. It drives the same port, prompts through the height / RPM /
   collective grid, and writes `data/run-log.csv` directly. No transcribing
   numbers by hand.
@@ -287,6 +289,8 @@ docs/12-live-readout.md            tools/live.py: browser dashboard, logging, po
 docs/13-arduino-working-config.md  THE PROVEN SETTINGS. Read this one first if stuck.
 docs/14-torque-stand.md            the separate torque rig: second board, second cell
 docs/15-python-venv.md             Python on the Mac. Do this before any tools/ command.
+docs/16-rpm-tach.md                port/starboard RPM from the Castle ESCs via FT232H, into live.py
+docs/17-power-meter.md             pack volts/amps/watts from a hall sensor + Nano, into live.py
 docs/wiring-adafruit-hx711.svg     printable wiring diagram - Adafruit 5974 board
 docs/wiring-generic-hx711.svg      printable wiring diagram - SparkFun / generic green
 docs/wiring-torque-stand.svg       torque stand wiring - second Nano, second HX711, 5 kg cell
@@ -298,6 +302,15 @@ firmware/thrust_stand/
 
 firmware/torque_stand/
     torque_stand.ino               second board. reports torque in N.m. See docs/14.
+
+firmware/power_meter/
+    power_meter.ino                third board. ACS724 hall sensor + divider, volts/amps/watts. See docs/17.
+
+rpm/
+    src/rpm_reader.c               FT232H edge counter, Castle AUX RPM OUT -> rpm CSV on stdout
+    scripts/build_static.sh        builds rpm_reader_static and list_ftdi here. Run once.
+    vendor/ftdi/                   FTDI D2XX header and static lib
+    docs/                          the FT232H handbook: Castle Link setup, wiring, two boards
 
 cad/
     torque_cradle.py               Fusion script, builds the torque cradle parts

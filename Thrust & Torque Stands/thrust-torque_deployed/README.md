@@ -17,13 +17,18 @@ lives.
 
 ## Start here
 
+- **Every session: `bash tools/start.sh`** -> finds the boards, launches `live.py`, opens the
+  dashboard. `docs/18 - One command to start everything.md`.
+- **One nacelle on the bench?** -> use the sibling package `../single`, a full copy of this
+  one whose dashboard defaults to one RPM card and one power card. `--single` does the same
+  here for one session.
 - Never used an Arduino? -> `docs/10-arduino-first-time.md`
 - Already have the parts and want one page? -> `docs/00-quickstart.md`
 - Want to try the software before parts arrive? -> `python3 tools/bench.py --simulate`
 - **Python on the Mac: use a venv** -> `docs/15-python-venv.md`. Everything in `tools/`
   assumes you have activated it.
-- **Updating, and killing a stale process** -> `INSTALL.md`. Read it before unpacking a new
-  zip; Finder will quietly make a `... 2` folder and leave you running old code.
+- **Updating, and killing a stale process** -> `INSTALL.md`. This folder is a git working
+  copy now; `git pull` and `tools/stop.sh`, no zips.
 - Not sure which version is on disk? -> `cat VERSION` or `python3 tools/live.py --version`
 - **Before the first spin** -> `docs/09-safety.md`
 
@@ -139,8 +144,10 @@ screen -L -Logfile ~/thrust-run.txt /dev/cu.usbserial-1480 115200
 - **CoolTerm** (free, GUI): scrollback, logging, timestamps. Easier than
   `screen` for long runs.
 - **`tools/live.py`** is the best option in this branch: browser dashboard,
-  strip chart, logging, BEMT overlay, and it works from an iPad over the VPN.
-  See `docs/12-live-readout.md`.
+  strip chart, logging, BEMT overlay, port and starboard rotor RPM from the
+  tachs, pack power from the hall-sensor Nano, and it works from an iPad over
+  the VPN. See `docs/12-live-readout.md`, `docs/16-rpm-tach.md` and
+  `docs/17-power-meter.md`.
 - **`tools/bench.py`** is the guided grid-capture session. It drives the same port, prompts through the height / RPM /
   collective grid, and writes `data/run-log.csv` directly. No transcribing
   numbers by hand.
@@ -175,7 +182,7 @@ insensitive, one per line. Anything unrecognised returns `! unknown command`.
 | `ms` | `millis()` since boot. Not wall clock. |
 | `lbf` | Change from tare, in pounds force. **Meaningless until calibrated.** |
 | `N` | Same value in newtons (lbf x 4.4482216). |
-| `raw` | Raw HX711 counts, 2 samples. Absolute, not tare-relative. |
+| `raw` | Raw HX711 counts, the same conversions `lbf` was computed from. Absolute, not tare-relative. |
 
 `raw` is the field to trust before calibration and the field to watch for
 drift after.
@@ -287,6 +294,10 @@ docs/12-live-readout.md            tools/live.py: browser dashboard, logging, po
 docs/13-arduino-working-config.md  THE PROVEN SETTINGS. Read this one first if stuck.
 docs/14-torque-stand.md            the separate torque rig: second board, second cell
 docs/15-python-venv.md             Python on the Mac. Do this before any tools/ command.
+docs/16-rpm-tach.md                port/starboard RPM from the Castle ESCs via FT232H, into live.py
+docs/17-power-meter.md             pack volts/amps/watts from a hall sensor + Nano, into live.py
+docs/18 - One command to start everything.md
+                                   tools/start.sh: probe the hub, launch live.py with every board
 docs/wiring-adafruit-hx711.svg     printable wiring diagram - Adafruit 5974 board
 docs/wiring-generic-hx711.svg      printable wiring diagram - SparkFun / generic green
 docs/wiring-torque-stand.svg       torque stand wiring - second Nano, second HX711, 5 kg cell
@@ -299,16 +310,31 @@ firmware/thrust_stand/
 firmware/torque_stand/
     torque_stand.ino               second board. reports torque in N.m. See docs/14.
 
+firmware/power_meter/
+    power_meter.ino                third board. ACS724 hall sensor + divider, volts/amps/watts. See docs/17.
+
+rpm/
+    src/rpm_reader.c               FT232H edge counter, Castle AUX RPM OUT -> rpm CSV on stdout
+    scripts/build_static.sh        builds rpm_reader_static and list_ftdi here. Run once.
+    vendor/ftdi/                   FTDI D2XX header and static lib
+    docs/                          the FT232H handbook: Castle Link setup, wiring, two boards
+
 cad/
     torque_cradle.py               Fusion script, builds the torque cradle parts
 
-INSTALL.md                         unpacking, updating, killing stale processes. READ FIRST.
+INSTALL.md                         updating the working copy, killing stale processes. READ FIRST.
 VERSION                            date-stamped build id; live.py prints it at startup
+.gitignore                         logs, ports.json, settings, pycache, the built rpm binaries
 
 tools/
-    stop.sh                        kills stale live.py/bench.py, reports port holders
+    start.sh                       THE LAUNCHER. stop.sh, build rpm reader if missing,
+                                   find_ports.py, then live.py with every board. See docs/18.
+    find_ports.py                  probes each cu.usbserial-* for its boot banner and the
+                                   FT232Hs for their serials; writes ports.json
+    ports.json                     generated by find_ports.py, per machine, not in git
+    stop.sh                        kills stale live.py/bench.py/rpm readers, reports port holders
     live.py                        browser dashboard: live readout, strip chart,
-                                   logging, BEMT power overlay. See docs/12.
+                                   logging, BEMT power overlay, tach RPM, pack power. See docs/12.
     bemt_curves_v49.json           predicted thrust/power curves, R = 457 mm
     bench.py                       laptop app: menu, guided run capture, CSV logging
     reduce.py                      turns the run log into the deliverable table

@@ -4,19 +4,26 @@
 #   bash tools/stop.sh
 #
 # Safe to run any time. It only kills processes whose command line contains
-# live.py or bench.py, then reports whatever is still listening on the web
+# live.py, bench.py or rpm_reader_static (the tach readers live.py spawns), then reports whatever is still listening on the web
 # ports this package uses and whatever holds the CH340 serial devices.
 
 set -u
 
-echo "== killing stale live.py / bench.py"
+echo "== killing stale live.py / bench.py / rpm_reader_static"
 # match python processes running the tools, never this script or its parent shell
-pids=$(pgrep -f 'python[0-9.]* .*(live|bench)\.py' | grep -v -w -e "$$" -e "$PPID" || true)
+pids=$(pgrep -if '(live|bench)\.py|rpm_reader_static' | grep -v -w -e "$$" -e "$PPID" || true)
+# also whoever holds our serial devices or the dashboard port, however it was launched
+shopt -s nullglob
+for d in /dev/cu.usbserial-*; do pids="$pids $(lsof -t "$d" 2>/dev/null || true)"; done
+for p in 8765 8766 8767; do pids="$pids $(lsof -t -nP -iTCP:$p -sTCP:LISTEN 2>/dev/null || true)"; done
+# only our own tools: never the Arduino IDE or anything else that may hold a port
+pids=$(for q in $(echo $pids | tr ' ' '\n' | grep -v -w -e "$$" -e "$PPID" | sort -u); do
+    ps -o command= -p $q 2>/dev/null | grep -qiE 'python|live\.py|bench\.py|rpm_reader' && echo $q; done | tr '\n' ' ')
 if [ -n "$pids" ]; then
     ps -o pid=,command= -p $pids
     kill $pids 2>/dev/null
     sleep 0.5
-    left=$(pgrep -f 'python[0-9.]* .*(live|bench)\.py' | grep -v -w -e "$$" -e "$PPID" || true)
+    left=$(for q in $pids; do kill -0 $q 2>/dev/null && echo $q; done)
     if [ -n "$left" ]; then
         echo "   still alive, sending KILL"
         kill -9 $left 2>/dev/null

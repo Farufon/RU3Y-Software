@@ -198,7 +198,8 @@ Fill in `data/run-log-template.csv`.
 | height_mm | tape measure | measured, not nominal |
 | z_over_R | computed | height divided by 457 |
 | head_rpm_cmd | your setpoint | what you asked for |
-| head_rpm_actual | tach or telemetry | **what you got.** These differ. |
+| head_rpm_actual | FT232H tach via live.py, auto-filled at capture | **what you got.** These differ. |
+| rpm_port, rpm_stbd | live.py, auto | per-nacelle tach averages over the capture window. Only the one on the stand is non-blank in a thrust run. |
 | collective_deg | doc 05a calibration | degrees at 0.75R |
 | servo_us | servo command | the raw number, for traceability |
 | throttle_pct | transmitter | now only a governor setpoint record |

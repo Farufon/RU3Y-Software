@@ -68,21 +68,22 @@ ground effect is the thing being measured. Three splayed legs, nothing solid und
 | # | Item | Notes |
 |---|---|---|
 | 16 | Inline watt meter or shunt | Between pack and ESC. **Size for 50 A per nacelle**. Hover is 21 A at 21 V (446 W, flight-tested), not the 13 A earlier versions of this table assumed, and you will be exploring the thrust ceiling well past that. ESC-reported current is often 5-10 percent off; do not trust it for the deliverable. |
-| 17 | Optical or ESC telemetry tachometer | **Required, not optional.** The governor can droop off its setpoint under load, and `head_rpm_actual` is a required log column. |
+| 17 | Tachometer: 2 x Adafruit FT232H breakout + 2 x 1 kΩ, reading the Castle ESC AUX RPM OUT | **Required, not optional.** The governor can droop off its setpoint under load, and `head_rpm_actual` is a required log column. `live.py` reads both boards and fills it in. Doc 16. |
 | 17a | Blade pitch gauge | Digital-readout heli pitch gauge, clamps at 0.75R (r = 343 mm). This is the inner test axis; without it you are logging servo counts. See doc 05a. |
 | 17b | Servo tester | To command specific microsecond values during the pitch calibration. Your transmitter will do if it can show the raw value. |
 | 18 | Calibration weights | 2, 5 and 10 lb, or gym plates verified on a known-good scale. Non-negotiable. |
-| 19 | Tape measure / height gauge | Rotor plane to floor, at each ladder step. |
+| 19 | Power meter: two Pololu ACS724 -50..+50 A carriers (item 4049), one per pack, third Nano, two 100k/10k dividers | Replaces the LCD watt meter. Port and stbd volts and amps into the dashboard on one board, hall sensors so the negative leads stay unbroken. Doc 17. |
+| 20 | Tape measure / height gauge | Rotor plane to floor, at each ladder step. |
 
 ## Consumables and safety
 
 | # | Item |
 |---|---|
-| 20 | Hearing protection |
-| 21 | Eye protection |
-| 22 | Polycarbonate barrier or equivalent standoff, see doc 09 |
-| 23 | Zip ties, tape for cable service loops |
-| 24 | Torque wrench |
+| 21 | Hearing protection |
+| 22 | Eye protection |
+| 23 | Polycarbonate barrier or equivalent standoff, see doc 09 |
+| 24 | Zip ties, tape for cable service loops |
+| 25 | Torque wrench |
 
 ## Rough total
 

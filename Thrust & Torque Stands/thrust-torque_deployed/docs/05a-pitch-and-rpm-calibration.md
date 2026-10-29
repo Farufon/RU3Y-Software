@@ -91,7 +91,7 @@ tied down.
    possible so it can hold the setpoint cleanly.
 2. Spool up gently to the lowest setpoint you intend to use.
 3. Let it settle a full **ten seconds**. Governors take longer to settle than you expect.
-4. Record commanded throttle and **measured** RPM, from an optical tach or telemetry.
+4. Record commanded throttle and **measured** RPM. The FT232H tach in `live.py` gives it to you live (doc 16); an optical tach on the rotor is the cross-check that the pole and ratio settings are right.
 5. Step through the ladder:
 
 | Throttle cmd | Target RPM | Measured RPM (flat pitch) | Delta |

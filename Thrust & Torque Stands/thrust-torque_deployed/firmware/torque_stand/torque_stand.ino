@@ -79,6 +79,7 @@ const uint8_t  READ_AVG  = 8;    // conversions per reported value
 const uint8_t  TARE_AVG  = 32;
 const uint8_t  CAL_AVG   = 32;
 const uint16_t STREAM_MS = 100;  // requested; RATE=L makes the real rate ~1.2 Hz
+const uint16_t READY_TIMEOUT_MS = 600;  // per conversion; RATE=L is 100 ms, H is 12.5 ms
 
 // ----------------------------------------------------------------- eeprom --
 const int EE_MAGIC = 0;   // uint16
@@ -103,13 +104,27 @@ char    lineBuf[24];
 uint8_t lineLen = 0;
 
 // ---------------------------------------------------------------- helpers --
-long readRaw(uint8_t n) {
-  // Bogdan's read_average returns a long already averaged over n conversions.
-  return cell.read_average(n);
+// Average n conversions into out. Returns false, with an ERR line, if the
+// HX711 stops answering. Bogdan's read_average() calls wait_ready(), which
+// spins forever when DT stays high on a broken cell lead; the stream would
+// just stop with no message.
+bool readRaw(uint8_t n, long &out) {
+  long acc = 0;
+  for (uint8_t i = 0; i < n; ++i) {
+    if (!cell.wait_ready_timeout(READY_TIMEOUT_MS, 1)) {
+      Serial.println(F("ERR: HX711 timeout. cell lead, DT/SCK wiring, or 5V."));
+      return false;
+    }
+    acc += cell.read();
+  }
+  out = acc / n;
+  return true;
 }
 
 void doTare(uint8_t n) {
-  tareOffset = readRaw(n);
+  long v;
+  if (!readRaw(n, v)) { Serial.println(F("ERR: tare aborted, offset unchanged")); return; }
+  tareOffset = v;
   Serial.print(F("tared, offset "));
   Serial.println(tareOffset);
 }
@@ -119,7 +134,9 @@ float countsToNm(long corrected) {
 }
 
 void printReading(uint8_t n) {
-  long corrected = readRaw(n) - tareOffset;
+  long v;
+  if (!readRaw(n, v)) return;
+  long corrected = v - tareOffset;
   float nm = countsToNm(corrected);
   float force = (armR_mm > 0.1f) ? (nm / (armR_mm / 1000.0f)) : 0.0f;
 
@@ -173,7 +190,9 @@ void doCalibrate(float knownNm) {
     Serial.println(F("ERR: calibration torque must be positive N.m"));
     return;
   }
-  long corrected = readRaw(CAL_AVG) - tareOffset;
+  long v;
+  if (!readRaw(CAL_AVG, v)) { Serial.println(F("ERR: calibration aborted")); return; }
+  long corrected = v - tareOffset;
   long mag = corrected < 0 ? -corrected : corrected;
   if (mag < 1000L) {
     Serial.print(F("ERR: only "));
@@ -234,9 +253,11 @@ void handleLine(char *s) {
       break;
 
     case 'z': {
-      long v = readRaw(CAL_AVG);
-      Serial.print(F("raw "));
-      Serial.println(v);
+      long v;
+      if (readRaw(CAL_AVG, v)) {
+        Serial.print(F("raw "));
+        Serial.println(v);
+      }
       break;
     }
 

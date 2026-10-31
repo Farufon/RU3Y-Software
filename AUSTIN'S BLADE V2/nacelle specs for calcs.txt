@@ -1,0 +1,23 @@
+The aircraft total weight is 15 lbs.
+
+blade radius 457 mm on each nacelle.
+
+Two naceelles on each wingtip, the wingspan is 6 feet.
+
+6S
+Tmotor 320 kv motors
+3:1 gear ratio WORKS, 3.5:1 will be better
+2 servos: start with 45-degree advance on the pitch links to counter the (current) 45-degree lag in the rotor
+2 blades: get rid of wetted area to maximize cruise range
+this nacelle will take us to the longest range and ultimately be what we produce in numbers once it's dialed in
+
+Each nacelle will weight approx. 1200 grams.
+
+He expects to hover at around 280 watts, around 26 amps?
+
+RPM at around 1600.
+
+Then in flight mode, the RPM much lower. 
+
+
+ 

@@ -1,0 +1,142 @@
+I need a Pololu Maestro script for a 10 minute nacelle spin test.  This is the sequence I will use our software to measure thrust, rpm, voltage, watts, amps and eventually torque. 
+
+Here are the givens.
+
+Two swashplate servos, not three.  I’ve locked off side to side, and only allow swash to tilt forward and back.  The two servos are FWD and AFT.  Both servos are positioned for ‘startup or error’ to 1500.  
+
+Now, I will start with testing the starboard nacelle.  The trims are different from starboard to port, so I will eventually have two scripts.  For the starboard nacelle, the following trims and settings should be considered keyframes in this script.  
+
+(Note that maestro settings in the live controls are in microseconds… a standard for servo pwm control.  But when maestro sequences for instance are converted to a script, the servo settings are in 1/4 microseconds.  So a script for a sequence setting of 1500 would show 6000.  https://www.pololu.com/docs/0J40). 
+
+Here are the keyframes. Assume a smooth transition and not a jump from position to position.  Rather than setting servo speed, you may need to include discrete steps to acheive a slower movement.  This is to simulate a slight human control.
+
+
+1. Startup. Hold for 5 seconds.  46 DEG. Blade Grips
+
+FWD = 1500
+AFT = 1500
+VEC = 1012
+MOT = 992
+
+
+2. Swashplate 50 DEG. Blade Grips.  Hold for 2 seconds.  
+
+FWD = 1600
+AFT = 1400
+VEC = 1012
+MOT = 992
+
+
+3. Swashplate 60 DEG. Blade Grips.  Hold for 2 seconds.
+
+FWD = 1670
+AFT = 1334
+VEC = 1012
+MOT = 992
+
+
+4. Swashplate 70 DEG. Blade Grips.  Hold for 2 seconds.
+
+FWD = 1843
+AFT = 1163
+VEC = 1012
+MOT = 992
+
+
+5. Swashplate 60 DEG. Blade Grips.  Hold for 2 seconds.
+
+FWD = 1670
+AFT = 1334
+VEC = 1012
+MOT = 992
+
+
+6. Swashplate 50 DEG. Blade Grips.  Hold for 2 seconds.  
+
+FWD = 1600
+AFT = 1400
+VEC = 1012
+MOT = 992
+
+7. Swashplate 46 DEG. Blade Grips.  Hold for 5 seconds.  
+
+FWD = 1500
+AFT = 1500
+VEC = 1012
+MOT = 992
+
+
+8. Starting the motor.  This is a ramp from 992-2000 and must be a smooth increase over 10 seconds.
+
+FWD = 1500
+AFT = 1500
+VEC = 1012
+MOT = 992 - 2000 (Over ten seconds)
+
+
+9. Hold this speed for 10 minutes.  During this ten minutes, we want to start to modify the swashplate.
+
+	a. FWD = 1500, AFT = 1500 (slowly move incrementally to the next step, over 3 seconds. Hold for 30 seconds)
+	b. FWD = 1600, AFT = 1400 (slowly move incrementally to the next step, over 3 seconds. Hold for 30 seconds)
+	c. FWD = 1670, AFT = 1334 (slowly move incrementally to the next step, over 3 seconds. Hold for 30 seconds)
+	d. FWD = 1843, AFT = 1163 (slowly move incrementally to the next step, over 3 seconds. Hold for 30 seconds)
+	e. FWD = 1670, AFT = 1334 (slowly move incrementally to the next step, over 3 seconds. Hold for 30 seconds)
+	f. FWD = 1600, AFT = 1400 (slowly move incrementally to the next step, over 3 seconds. Hold for 30 seconds)
+	g. FWD = 1500, AFT = 1500 (slowly move incrementally to the next step, over 3 seconds. Hold for 30 seconds)
+
+10. Ramp down MOT from 2000 to 992.
+
+
+11. Cycle VEC only from 992 - 2000 over 9 seconds.  Then back again to 992.  When i did this earlier, I had to create a lot of incremental steps to total the 9 seconds.   Here’s a note about the vector servo. The 2000 Series 5-Turn, Dual Mode Servo (25-3, Speed 2000-0025-0503 is less degree movement than 5 real turns of 360.  This servo runs on a fraction of the one microsecond standard like the AFT and FWD servos.   I have the vector gear ratio designed such that 992 to 2000 is 94 degrees of nacelle vector rotation from straight up, (hover mode) to 90 degrees forward for forward flight. 
+
+
+
+NOTE:
+
+I created a quick multi-step sequence to just cycle the FWD and AFT servos.  Then selected the ‘create script from sequence’ option.  It’s simple and your script will be much more complex and include more frames to control servo speed.  Don’t use the speed function… use more frames. Here’s that simple script.  It shows the 4-times difference of the pwm numbers from microseconds to quarters. 
+
+
+
+# Sequence 0
+begin
+  5000 6000 6000 4048 3968 0 0 frame_0..5 # Frame 0
+  5000 6400 5600 frame_0_1 # Frame 1
+  5000 6680 5336 frame_0_1 # Frame 2
+  5000 7372 4652 frame_0_1 # Frame 3
+  5000 6000 6000 8000 frame_0..2 # Frame 4
+  5000 4048 frame_2 # Frame 5
+repeat
+
+sub frame_0..5
+  5 servo
+  4 servo
+  3 servo
+  2 servo
+  1 servo
+  0 servo
+  delay
+  return
+
+sub frame_0_1
+  1 servo
+  0 servo
+  delay
+  return
+
+sub frame_0..2
+  2 servo
+  1 servo
+  0 servo
+  delay
+  return
+
+sub frame_2
+  2 servo
+  delay
+  return
+
+
+
+
+
+

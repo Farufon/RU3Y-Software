@@ -1,0 +1,82 @@
+# Starboard nacelle spin test, Pololu Maestro script
+# Channels (from your exported sequence): 0 FWD, 1 AFT, 2 VEC, 3 MOT. 4 and 5 off.
+# All positions in quarter-microseconds (1500 us = 6000).
+# No speed/acceleration settings used; every move is stepped by the ramp subs.
+# Run once, then quit. Do NOT enable "run script on startup".
+
+# ---------- 1. startup, 5 s ----------
+6000 0 servo  6000 1 servo  4048 2 servo  3968 3 servo
+0 4 servo  0 5 servo
+5000 delay
+
+# ---------- 2-7. swash sweep, motor off, 2 s holds ----------
+6400 5600 swash  2000 delay     # 50 deg
+6680 5336 swash  2000 delay     # 60 deg
+7372 4652 swash  2000 delay     # 70 deg
+6680 5336 swash  2000 delay     # 60 deg
+6400 5600 swash  2000 delay     # 50 deg
+6000 6000 swash  5000 delay     # 46 deg, 5 s
+
+# ---------- 8. motor ramp 992 -> 2000 over 10 s ----------
+8000 3 48 208 ramp              # 48 steps x 84 qus x 208 ms = 9.98 s
+
+# ---------- 9. ten minutes at full, swash sweep with 30 s holds ----------
+6000 6000 swash  30000 delay    # a 46 deg
+6400 5600 swash  30000 delay    # b 50 deg
+6680 5336 swash  30000 delay    # c 60 deg
+7372 4652 swash  30000 delay    # d 70 deg
+6680 5336 swash  30000 delay    # e 60 deg
+6400 5600 swash  30000 delay    # f 50 deg
+6000 6000 swash  30000 delay    # g 46 deg
+12 hold30  9000 delay           # pad to 600 s total at full throttle
+
+# ---------- 10. motor ramp 2000 -> 992 over 10 s ----------
+3968 3 48 208 ramp
+
+# ---------- 11. vector cycle, 9 s each way ----------
+8000 2 48 187 ramp              # hover -> forward flight, 8.98 s
+2000 delay
+4048 2 48 187 ramp              # back to hover
+
+quit
+
+# ===== subroutines =====
+
+# swash: ( fwd aft -- )  move both swash servos together over 3 s (10 steps, 300 ms)
+sub swash
+  10 300 move2
+  return
+
+# move2: ( fwd aft n ms -- )  step channels 0 and 1 to targets in n steps of ms
+sub move2
+  3 pick 0 get_position minus 2 pick divide     # dfwd
+  3 pick 1 get_position minus 3 pick divide     # daft
+  3 pick                                        # counter = n
+  begin dup while
+    0 get_position 3 pick plus 0 servo
+    1 get_position 2 pick plus 1 servo
+    3 pick delay
+    1 minus
+  repeat
+  drop drop drop drop drop                      # counter daft dfwd ms n
+  1 servo 0 servo                               # land exactly on targets
+  return
+
+# ramp: ( target ch n ms -- )  step one channel to target in n steps of ms
+sub ramp
+  3 pick 3 pick get_position minus 2 pick divide   # d per step
+  2 pick                                           # counter = n
+  begin dup while
+    4 pick get_position 2 pick plus 5 pick servo
+    3 pick delay
+    1 minus
+  repeat
+  drop drop drop drop                              # counter d ms n
+  servo                                            # land exactly on target
+  return
+
+# hold30: ( n -- )  n x 30 s
+sub hold30
+  begin dup while 30000 delay 1 minus repeat
+  drop
+  return

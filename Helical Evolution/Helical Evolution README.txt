@@ -1,4 +1,4 @@
-
+ 
 I've uploaded two files.  A python script that you helped me create that makes a raw, 3:1 helical gear in Autodesk Fusion. 
 
 The second file is a step of the finished (AND SIZED AXEL TO AXEL DISTANCE), geometry needed for the two gears to work/fit in the assembly. 

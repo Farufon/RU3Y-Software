@@ -184,13 +184,17 @@ def tooth_flanks(N, rad, alpha_t, backlash_cm, root_fillet_cm=0.0, tip_break_cm=
     theta0 = -(half + inv_at)
 
     # Root fillet: tangent to the root circle and to the flank
+    # The fillet is seated 4% of its radius below the root circle (about 5
+    # microns). It then crosses the root cylinder at ~16 deg instead of meeting
+    # it exactly tangent, which is what solid joins handle badly.
     r_lo, head = rf, []
     if root_fillet_cm > 1e-9:
         rho = root_fillet_cm
-        phi, r_lo = _tangent_circle(rf + rho, rho, -1.0, rb, theta0, rf, rf + 3.0 * rho)
+        rs = rf - 0.04 * rho
+        phi, r_lo = _tangent_circle(rs + rho, rho, -1.0, rb, theta0, rs, rs + 3.0 * rho)
         if phi <= -math.pi / N:
             raise RuntimeError('ROOT_FILLET is too large for the {}T tooth space.'.format(N))
-        head = _arc_points(rf + rho, phi, (rf, phi),
+        head = _arc_points(rs + rho, phi, (rs, phi),
                            (r_lo, _flank_angle(r_lo, rb, theta0)), 8)
 
     # Tip break: tangent to the flank and to the tip circle
@@ -261,9 +265,10 @@ def offset_plane(comp, z):
     return comp.constructionPlanes.add(pin)
 
 
-def build_teeth(comp, N, hand, phase, geom, tip_break_cm=0.0):
+def build_teeth(comp, N, hand, phase, geom, tip_break_cm=0.0, make_core=True):
     """Root cylinder plus N helical teeth, Z = 0 .. face width.
-    hand: +1 = RH, -1 = LH.  phase: angle of a tooth center at Z = 0."""
+    hand: +1 = RH, -1 = LH.  phase: angle of a tooth center at Z = 0.
+    make_core=False: the root cylinder already exists, only add the teeth."""
     rad = gear_radii(N, geom)
     fw = geom['fw']
     twist = hand * fw * math.tan(geom['beta']) / rad['r']
@@ -271,12 +276,13 @@ def build_teeth(comp, N, hand, phase, geom, tip_break_cm=0.0):
     origin = adsk.core.Point3D.create(0, 0, 0)
 
     # Root cylinder
-    sk_cyl = comp.sketches.add(comp.xYConstructionPlane)
-    sk_cyl.sketchCurves.sketchCircles.addByCenterRadius(origin, rad['rf'])
-    ext_in = feats.extrudeFeatures.createInput(
-        sk_cyl.profiles.item(0), adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-    ext_in.setDistanceExtent(False, adsk.core.ValueInput.createByReal(fw))
-    feats.extrudeFeatures.add(ext_in)
+    if make_core:
+        sk_cyl = comp.sketches.add(comp.xYConstructionPlane)
+        sk_cyl.sketchCurves.sketchCircles.addByCenterRadius(origin, rad['rf'])
+        ext_in = feats.extrudeFeatures.createInput(
+            sk_cyl.profiles.item(0), adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        ext_in.setDistanceExtent(False, adsk.core.ValueInput.createByReal(fw))
+        feats.extrudeFeatures.add(ext_in)
 
     # One tooth, lofted through several stations so it follows a true helix
     flankA, flankB = tooth_flanks(N, rad, geom['alpha_t'], geom['backlash'],
@@ -307,7 +313,18 @@ def _near(sp, p3d):
     return math.hypot(math.hypot(g.x - p3d.x, g.y - p3d.y), g.z - p3d.z)
 
 
-def revolve_xz(comp, path, operation, about_first_line=False):
+def only_this_body(feature_input, body):
+    """Limit a cut/join to one body. Both parts are built at the origin before
+    being placed, so without this a cut on one part can also cut the other."""
+    if body is None:
+        return
+    try:
+        feature_input.participantBodies = [body]
+    except:
+        pass
+
+
+def revolve_xz(comp, path, operation, about_first_line=False, body=None):
     """Revolve a closed profile drawn on the XZ plane.
 
     path: [(x, z), seg, seg, ...] in cm, model coordinates. Each seg is
@@ -344,6 +361,7 @@ def revolve_xz(comp, path, operation, about_first_line=False):
     revs = comp.features.revolveFeatures
     rin = revs.createInput(sk.profiles.item(0), axis, operation)
     rin.setAngleExtent(False, adsk.core.ValueInput.createByString('360 deg'))
+    only_this_body(rin, body)
     return revs.add(rin)
 
 
@@ -385,19 +403,24 @@ def build_pinion(root, geom, phase):
     Join = adsk.fusion.FeatureOperations.JoinFeatureOperation
     Cut  = adsk.fusion.FeatureOperations.CutFeatureOperation
 
-    rad = build_teeth(comp, N, +1.0, phase, geom, PINION_TIP_BREAK * MM)
-    fw  = geom['fw']
+    New  = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
 
-    hub = rad['rf'] - P_HUB_BELOW_ROOT * MM
+    rad = gear_radii(N, geom)
+    fw  = geom['fw']
+    rf  = rad['rf']
+
+    hub = rf - P_HUB_BELOW_ROOT * MM
     fil = P_HUB_FILLET * MM
     zb, zt = P_FLANGE_Z_BOT * MM, P_FLANGE_Z_TOP * MM
     R = P_FLANGE_R * MM
     if hub - P_BORE_LARGE_R * MM < 1.0 * MM:
         raise RuntimeError('Pinion hub wall under 1 mm. Use more pinion teeth '
                            'or a smaller P_HUB_BELOW_ROOT.')
+    if hub + fil > rf:
+        raise RuntimeError('Pinion hub plus its fillet is larger than the tooth root.')
 
-    # Flange + hub, with the 0.2 fillets, overlapping 0.3 mm into the root cylinder
-    lap = 0.3 * MM
+    # Flange + hub (with its 0.2 fillets) + root cylinder as ONE solid, so the
+    # toothed section and the hub cannot come out as separate bodies.
     revolve_xz(comp, [
         (0, zb),
         ('L', (R, zb)),
@@ -406,9 +429,14 @@ def build_pinion(root, geom, phase):
         ('A', (hub + fil - fil * S45, zt + fil - fil * S45), (hub, zt + fil)),
         ('L', (hub, -fil)),
         ('A', (hub + fil - fil * S45, -fil + fil * S45), (hub + fil, 0)),
-        ('L', (hub + fil, lap)),
-        ('L', (0, lap)),
-    ], Join)
+        ('L', (rf, 0)),
+        ('L', (rf, fw)),
+        ('L', (0, fw)),
+    ], New)
+
+    # Teeth, joined onto that solid
+    build_teeth(comp, N, +1.0, phase, geom, PINION_TIP_BREAK * MM, make_core=False)
+    body = comp.bRepBodies.item(0)
 
     # Stepped bore
     e = 0.5 * MM
@@ -420,7 +448,7 @@ def build_pinion(root, geom, phase):
         ('L', (rl, zs)),
         ('L', (rl, fw + e)),
         ('L', (0, fw + e)),
-    ], Cut)
+    ], Cut, body=body)
 
     # Flange bolt holes: sketch at mid flange, cut symmetric so direction is moot
     sk = comp.sketches.add(offset_plane(comp, 0.5 * (zb + zt)))
@@ -436,6 +464,7 @@ def build_pinion(root, geom, phase):
     ex_in = comp.features.extrudeFeatures.createInput(profs, Cut)
     ex_in.setSymmetricExtent(
         adsk.core.ValueInput.createByReal((zt - zb) + 0.6 * MM), True)
+    only_this_body(ex_in, body)
     comp.features.extrudeFeatures.add(ex_in)
 
     # Radial hub hole along local +X, bore to outside, one wall only
@@ -446,7 +475,7 @@ def build_pinion(root, geom, phase):
         ('L', (x1, zc)),
         ('L', (x1, zc + rc)),
         ('L', (x0, zc + rc)),
-    ], Cut, about_first_line=True)
+    ], Cut, about_first_line=True, body=body)
 
     return occ, rad, hub
 
@@ -459,48 +488,47 @@ def build_gear(root, geom, phase):
     Join = adsk.fusion.FeatureOperations.JoinFeatureOperation
     Cut  = adsk.fusion.FeatureOperations.CutFeatureOperation
 
-    rad = build_teeth(comp, N, -1.0, phase, geom, GEAR_TIP_BREAK * MM)
+    New  = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
+
+    rad = gear_radii(N, geom)
     fw  = geom['fw']
-    e   = 0.5 * MM
+    rf  = rad['rf']
 
-    # Top boss (overlaps 0.5 mm into the root cylinder)
     Rb, ztop = G_BOSS_R * MM, G_BOSS_Z_TOP * MM
-    revolve_xz(comp, [
-        (0, fw - e),
-        ('L', (Rb, fw - e)),
-        ('L', (Rb, ztop)),
-        ('L', (0, ztop)),
-    ], Join)
-
-    # Bottom counterbore + stepped bore, one cut
     rc, dc = G_CBORE_R * MM, G_CBORE_DEPTH * MM
     r1, r2 = G_BORE_R * MM, G_BORE_BOSS_R * MM
-    revolve_xz(comp, [
-        (0, -e),
-        ('L', (rc, -e)),
-        ('L', (rc, dc)),
-        ('L', (r1, dc)),
-        ('L', (r1, fw)),
-        ('L', (r2, fw)),
-        ('L', (r2, ztop + e)),
-        ('L', (0, ztop + e)),
-    ], Cut)
-
-    # Bottom annular pocket with its three 1 mm radii
     ri, ro = G_POCKET_R_IN * MM, G_POCKET_R_OUT * MM
     d, q = G_POCKET_DEPTH * MM, G_POCKET_FILLET * MM
-    if ro + q > rad['rf'] - 1.0 * MM:
+    if ro + q > rf - 1.0 * MM:
         raise RuntimeError('G_POCKET_R_OUT leaves under 1 mm of rim.')
+
+    # Root cylinder, top boss, stepped bore, bottom counterbore and bottom
+    # pocket (with its three 1 mm radii) as ONE revolved solid. Nothing is cut
+    # afterwards along the axis, so no cut can reach the pinion, which sits at
+    # the same origin until both parts are placed.
     revolve_xz(comp, [
-        (ri, -e),
-        ('L', (ro + q, -e)),
-        ('L', (ro + q, 0)),
-        ('A', (ro + q - q * S45, q - q * S45), (ro, q)),                 # mouth round
-        ('L', (ro, d - q)),
-        ('A', (ro - q + q * S45, d - q + q * S45), (ro - q, d)),         # outer floor fillet
-        ('L', (ri + q, d)),
-        ('A', (ri + q - q * S45, d - q + q * S45), (ri, d - q)),         # inner floor fillet
-    ], Cut)
+        (r1, dc),
+        ('L', (rc, dc)),                                                 # counterbore floor
+        ('L', (rc, 0)),
+        ('L', (ri, 0)),
+        ('L', (ri, d - q)),
+        ('A', (ri + q - q * S45, d - q + q * S45), (ri + q, d)),         # inner floor fillet
+        ('L', (ro - q, d)),
+        ('A', (ro - q + q * S45, d - q + q * S45), (ro, d - q)),         # outer floor fillet
+        ('L', (ro, q)),
+        ('A', (ro + q - q * S45, q - q * S45), (ro + q, 0)),             # mouth round
+        ('L', (rf, 0)),
+        ('L', (rf, fw)),
+        ('L', (Rb, fw)),
+        ('L', (Rb, ztop)),
+        ('L', (r2, ztop)),
+        ('L', (r2, fw)),
+        ('L', (r1, fw)),
+    ], New)
+
+    # Teeth, joined onto that solid
+    build_teeth(comp, N, -1.0, phase, geom, GEAR_TIP_BREAK * MM, make_core=False)
+    body = comp.bRepBodies.item(0)
 
     # Cross hole through the boss. Entry side (-X): spotface + clearance.
     zc = G_XHOLE_Z * MM
@@ -514,14 +542,14 @@ def build_gear(root, geom, phase):
         ('L', (xs, zc + G_XHOLE_CLEAR_R * MM)),
         ('L', (xs, zc + G_XHOLE_SPOT_R * MM)),
         ('L', (-xo, zc + G_XHOLE_SPOT_R * MM)),
-    ], Cut, about_first_line=True)
+    ], Cut, about_first_line=True, body=body)
     # Far wall (+X): tap drill, then cosmetic M2.5x0.45
     tap = revolve_xz(comp, [
         (xi, zc),
         ('L', (xo, zc)),
         ('L', (xo, zc + G_XHOLE_TAP_R * MM)),
         ('L', (xi, zc + G_XHOLE_TAP_R * MM)),
-    ], Cut, about_first_line=True)
+    ], Cut, about_first_line=True, body=body)
     threaded = add_cosmetic_thread(comp, tap, G_XHOLE_TAP_R * MM)
 
     return occ, rad, threaded
@@ -571,7 +599,16 @@ def run(context):
         gear_phase = math.pi + math.pi / N2
 
         occ1, rad1, hub = build_pinion(root, geom, pin_phase)
+        # Hide the finished pinion while the gear is built on the same origin
+        try:
+            occ1.isLightBulbOn = False
+        except:
+            pass
         occ2, rad2, threaded = build_gear(root, geom, gear_phase)
+        try:
+            occ1.isLightBulbOn = True
+        except:
+            pass
 
         for occ, m in ((occ1, placement(clock, -CENTER_DISTANCE * MM)),
                        (occ2, placement(0.0, 0.0))):

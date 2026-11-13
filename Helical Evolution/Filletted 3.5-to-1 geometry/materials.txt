@@ -1,5 +1,6 @@
-Helical Gears
+Helical Gears 3.5 to 1 filletted
 
+Materials
 
 Delrin AF (PTFE filled) for larger gear
 

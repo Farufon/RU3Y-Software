@@ -1,4 +1,4 @@
-# 17 - Pack power in `live.py`: hall sensors + Nano, two channels
+# 17 - Pack power in `live.py`: hall sensor + Nano
 
 Replaces the LCD watt meter with something the dashboard can read. A Hall
 current sensor in the positive pack lead, a resistor divider for pack volts,
@@ -6,11 +6,14 @@ and a third Nano printing CSV over USB. `live.py --power-port` shows watts,
 volts and amps beside thrust, draws a 90 s strip, and capture fills `volts`
 and `amps` from it so the run log stops depending on your eyes and the LCD.
 
+One stand, one pack, one sensor. The two-nacelle package carries a
+two-channel version of this sketch; this one is single-channel, on A0/A1.
+
 ## Why a Hall sensor and not a shunt
 
 A shunt meter puts a small resistor in the negative lead and measures the
-drop across it. On this bench the thrust Nano, the two FT232H tach boards and
-the Mac all share a ground through the USB hub, and the ESCs share theirs
+drop across it. On this bench the thrust Nano, the FT232H tach board and
+the Mac all share a ground through the USB hub, and the ESC shares its
 with the pack. Break the negative lead with a shunt and the USB cables become
 a second path around it: a few hundred milliamps through the hub at full
 load, noise on every channel. The Hall sensor passes the positive lead
@@ -21,10 +24,10 @@ output side is galvanically isolated from the current path. Problem gone.
 
 | | part | where | approx |
 |---|---|---|---|
-| Current | **two** Pololu ACS724 Current Sensor Carriers, -50 A to +50 A, item **4049** (Allegro ACS724LLCTR-50AB, 40 mV/A, 4 oz copper), one per nacelle | pololu.com | $11.49 each |
+| Current | Pololu ACS724 Current Sensor Carrier, -50 A to +50 A, item **4049** (Allegro ACS724LLCTR-50AB, 40 mV/A, 4 oz copper) | pololu.com | $11.49 |
 | Board | Elegoo Nano V3, same as the thrust and torque boards | you have spares | |
-| Divider | two of: 100 kΩ and 10 kΩ, 1% metal film, plus a 100 nF ceramic | parts bin | |
-| Leads | 12 AWG silicone, four XT90 (two male, two female) to make two pigtails | parts bin | |
+| Divider | 100 kΩ and 10 kΩ, 1% metal film, plus a 100 nF ceramic | parts bin | |
+| Leads | 12 AWG silicone, two XT90 (one male, one female) to make a pigtail | parts bin | |
 | Housing | a small printed box; the sensor board has two 2 mm mounting holes | Fusion | |
 
 Why 50 A bidirectional rather than 30 A unidirectional: hover is about 20 A
@@ -33,46 +36,30 @@ one with the heavy copper. The price in resolution is small (see below).
 
 ## Wiring
 
-Each nacelle has its own pack, so each gets its own sensor and its own
-divider. Both go to one Nano. One board means one USB cable, one zero per
-session, and port and stbd sampled on the same clock in the same CSV row.
-
 ```
-PORT pack +  ----XT90F----[ IP+  ACS724 #1  IP- ]----XT90M----  port nacelle +
-PORT pack -  ----XT90F------------------------------XT90M----  port nacelle -   (unbroken)
+pack +  ----XT90F----[ IP+  ACS724  IP- ]----XT90M----  nacelle +
+pack -  ----XT90F---------------------------XT90M----  nacelle -   (unbroken)
 
-STBD pack +  ----XT90F----[ IP+  ACS724 #2  IP- ]----XT90M----  stbd nacelle +
-STBD pack -  ----XT90F------------------------------XT90M----  stbd nacelle -   (unbroken)
+ACS724  VCC -> Nano 5V,  GND -> Nano GND,  OUT -> Nano A0
 
-ACS724 #1  VCC -> Nano 5V,  GND -> Nano GND,  OUT -> Nano A0     (port)
-ACS724 #2  VCC -> Nano 5V,  GND -> Nano GND,  OUT -> Nano A2     (stbd)
-
-port nacelle + (after sensor) --- 100k ---+--- 10k --- Nano GND
-                                          |
-                                       Nano A1   (100 nF to GND here)
-
-stbd nacelle + (after sensor) --- 100k ---+--- 10k --- Nano GND
-                                          |
-                                       Nano A3   (100 nF to GND here)
+nacelle + (after sensor) --- 100k ---+--- 10k --- Nano GND
+                                     |
+                                  Nano A1   (100 nF to GND here)
 ```
 
 - Solder the 12 AWG leads directly to the IP+ / IP- pads. Pololu's ring
   terminal option also works but adds resistance.
-- Current direction: IP+ toward the pack on both. Backwards reads negative;
-  the sign tells you.
-- The two dividers both return to Nano GND, so the two pack negatives are
-  tied together through 10 kΩ each. They already share a reference through
-  the Castle RPM leads and the USB hub, so this adds nothing new. Use thin
-  wire (22 to 24 AWG) for the divider legs so they can never carry motor
-  current if something else lets go. Do NOT run a separate heavy ground
-  between the packs.
-- Keep both sensors away from the motors and from each other's pack leads;
-  they read magnetic field and a 20 A conductor an inch away adds a few
-  hundred milliamps of offset. `z` cancels a static offset, not one that
-  changes with where the leads lie. Mount the two sensors a few inches
-  apart.
-- Label the pigtails PORT and STBD at both ends. The firmware has no way to
-  know which is which.
+- Current direction: IP+ toward the pack. Backwards reads negative; the
+  sign tells you.
+- The divider returns to Nano GND, so the pack negative is referenced to USB
+  ground through 10 kΩ. It already shares a reference through the Castle RPM
+  lead and the USB hub, so this adds nothing new. Use thin wire (22 to 24
+  AWG) for the divider legs so they can never carry motor current if
+  something else lets go.
+- Keep the sensor away from the motor and from the pack leads; it reads
+  magnetic field and a 20 A conductor an inch away adds a few hundred
+  milliamps of offset. `z` cancels a static offset, not one that changes
+  with where the leads lie.
 
 ## Firmware
 
@@ -80,96 +67,95 @@ stbd nacelle + (after sensor) --- 100k ---+--- 10k --- Nano GND
 (IDE 1.8.19, Nano, plain ATmega328P). Stream row:
 
 ```
-# n,ms,vP,aP,wP,vS,aS,wS,rawIP,rawVP,rawIS,rawVS
-1234,61700,24.112,18.354,442.6,23.980,17.611,422.3,660.8,448.2,655.1,445.7
+# n,ms,volts,amps,watts,rawI,rawV
+1234,61700,24.112,18.354,442.6,660.8,448.2
 ```
 
-Port volts/amps/watts, then stbd, then the raw ADC counts for both. 20 rows
-per second, each from 16 oversampled ADC reads per channel (four channels). The
-ADC and the ACS724 are both ratiometric to the Nano's 5 V, so a sagging USB
-rail does not move the **amps**. The divider is not ratiometric: the tap
-voltage is absolute, so its count scales with 1/VCC and a rail 2% low would
-read pack volts, and watts, 2% high. The firmware therefore measures VCC
-against the ATmega's internal 1.1 V bandgap on every row and uses that
-instead of assuming 5.000 V. `d` shows the measured rail as `vcc (bandgap)`.
-Expect 4.7 to 5.1 V depending on hub load; what matters is that it no longer
-leaks into the volts.
+Volts, amps, watts, then the raw ADC counts. 20 rows per second, each from
+16 oversampled ADC reads per input. The ADC and the ACS724 are both
+ratiometric to the Nano's 5 V, so a sagging USB rail does not move the
+**amps**. The divider is not ratiometric: the tap voltage is absolute, so
+its count scales with 1/VCC and a rail 2% low would read pack volts, and
+watts, 2% high. The firmware therefore measures VCC against the ATmega's
+internal 1.1 V bandgap on every row and uses that instead of assuming
+5.000 V. `d` shows the measured rail as `vcc (bandgap)`. Expect 4.7 to
+5.1 V depending on hub load; what matters is that it no longer leaks into
+the volts.
 
-Resolution: 10-bit ADC, 40 mV/A, so 0.12 A per count, 0.02 A after
+Resolution: 10-bit ADC, 40 mV/A, so 0.12 A per count, finer after
 oversampling. Volts: 0.054 V per count. Both well inside the 1 to 2% you
 need. Accuracy is set by calibration, below.
+
+**A Nano still carrying the two-channel sketch** (from the two-nacelle
+package) prints twelve-field rows. `live.py` accepts them and uses the first
+channel, A0/A1, and the power card says so. Flash this package's sketch when
+convenient; it picks up the first channel's calibration from EEPROM and
+tells you on the banner. Then press **Write** once to store it in the new
+layout.
 
 ## Calibration, once
 
 The ACS724's zero point is 2.5 V nominal and its gain 40 mV/A nominal; real
 parts sit a percent or two off and the zero drifts a little with
-temperature. Each channel is calibrated separately, from the dashboard's
-power console or the Arduino serial monitor:
+temperature. From the dashboard's power console or the Arduino serial
+monitor:
 
-1. **`z`** with both packs plugged in and both motors off, nothing drawing.
-   Zeroes both channels at once. Do this at the start of every session.
-2. **`kv p 24.87`** where 24.87 is what a multimeter reads across the port
-   pack at that moment; then **`kv s 24.91`** for stbd. Sets each divider
-   ratio (nominal 11.0 for 100k/10k; stored as `vScale`). Once. The rail at
-   that moment is folded in, so the bandgap's own part-to-part spread cancels
-   here and only rail changes afterwards are tracked. A `kv` done on a
-   pre-2026-10-26 build is converted on first boot, not lost.
-3. **`ka p 18.4`** while the port motor holds a steady load, 18.4 being what
-   the LCD watt meter (still inline for this step) or a clamp meter reads;
-   then **`ka s 18.1`** for stbd. Sets each gain. Once. A steady 15 to 25 A
-   load is better than a small one.
-4. **`w`** writes all six values to EEPROM.
+1. **`z`** with the pack plugged in and the motor off, nothing drawing. Do
+   this at the start of every session (the **Zero amps** button).
+2. **`kv 24.87`** where 24.87 is what a multimeter reads across the pack at
+   that moment. Sets the divider ratio (nominal 11.0 for 100k/10k; stored as
+   `vScale`). Once. The rail at that moment is folded in, so the bandgap's
+   own part-to-part spread cancels here and only rail changes afterwards are
+   tracked.
+3. **`ka 18.4`** while the motor holds a steady load, 18.4 being what the
+   LCD watt meter (still inline for this step) or a clamp meter reads. Sets
+   the gain. Once. A steady 15 to 25 A load is better than a small one.
+4. **`w`** writes all three values to EEPROM.
 
-`d` dumps the values for both channels and whether EEPROM had a
-calibration. The panel shows NOT CALIBRATED until it does. A channel with
-no pack connected reads rawV near zero and the card shows "no pack on this
-channel"; that is normal when only one nacelle is on the stand.
+`d` dumps the values and whether EEPROM had a calibration. The panel shows
+NOT CALIBRATED until it does. With no pack connected rawV reads near zero
+and the card says "no pack on the meter".
 
 ## Running
+
+```
+bash tools/start.sh
+```
+
+or by hand:
 
 ```
 python3 live.py --port /dev/cu.usbserial-1480 --power-port /dev/cu.usbserial-1490
 ```
 
 Three Nanos look alike in `--list`; the one that prints `# Nacelle Power
-Meter` on open is the power meter. Label the cable. `live.py` sends `s`
-itself on connect, so the meter streams as soon as the page has it, and
-reconnects if the USB drops.
+Meter` on open is the power meter. `start.sh` tells them apart by that
+banner. `live.py` sends `s` itself on connect, so the meter streams as soon
+as the page has it, and reconnects if the USB drops.
 
-Two power cards, port and stbd: watts large, volts and amps and raw counts
-under it, 5 s means, that channel's calibration values. The strip shows
-both channels, watts solid and amps (x10) dashed, port red and stbd green
-to match the RPM cards. Below: **Zero amps** (`z`), **Settings** (`d`),
-**Write** (`w`), and the console box, which is where `ka p`, `ka s`,
-`kv p`, `kv s` go.
+The power card: watts large, volts and amps and raw counts under it, 5 s
+means, the calibration values and the measured rail. The strip shows watts
+solid and amps (x10) dashed. Below: **Zero amps** (`z`), **Settings** (`d`),
+**Write** (`w`), and the console box, which is where `ka` and `kv` go.
 
-Capture: `volts` and `amps` in the run log come from **whichever channel has
-a pack on it**, averaged over the same window as thrust, the same way RPM
-takes whichever tach is alive. One nacelle is on the stand at a time, so that
-channel is the head under test; the `power_ch` column records `port` or
-`stbd`. With both channels live (a two-nacelle spin test) port goes in the
-main columns and stbd in `volts_stbd` / `amps_stbd`. Typing a value in either
-box overrides the meter for that row and leaves `power_ch` blank. `watts` in
-the run log and on the chart is the mean of instantaneous V x I from the
-meter, which is the correct number under ESC ripple; `reduce.py` prefers
-that column and falls back to volts x amps only for typed rows. The
-captured-points table shows port / stbd watts when both are live.
+Capture: `volts` and `amps` in the run log are the meter's averages over the
+same window as thrust. Typing a value in either box overrides the meter for
+that row. `watts` in the run log and on the chart is the mean of
+instantaneous V x I from the meter, which is the correct number under ESC
+ripple; `reduce.py` prefers that column and falls back to volts x amps only
+for typed rows.
 
 ## Log files
 
 `logs/power-YYYYmmdd-HHMMSS.csv`, one row per meter sample, 20 per second:
-`iso_time, epoch_s, board_ms, volts_port, amps_port, watts_port, volts_stbd,
-amps_stbd, watts_stbd, rawI_port, rawV_port, rawI_stbd, rawV_stbd`.
-`logs/stream-*.csv` gains `volts, amps` (the live channel) at the end of
-each thrust row, latest meter values under a second old, else blank.
-`run-log.csv` gains `volts_stbd, amps_stbd, watts, power_ch` at the end;
-older run logs are widened in place on first use, as with the rpm columns.
+`iso_time, epoch_s, board_ms, volts, amps, watts, rawI, rawV`.
+`logs/stream-*.csv` carries `volts, amps` at the end of each thrust row,
+latest meter values under a second old, else blank. `run-log.csv` carries
+`volts, amps, watts`.
 
 ## When it is wrong
 
-- **Amps read negative** under load: sensor is backwards. Swap IP+ and IP-,
-  or live with it and set gain with a negative `ka` (the firmware rejects
-  that, so swap the wires).
+- **Amps read negative** under load: sensor is backwards. Swap IP+ and IP-.
 - **Zero wanders by more than 0.3 A between sessions:** the sensor is near a
   current-carrying lead or a magnet. Move it. Re-`z`.
 - **Volts right, amps off by a constant factor:** `ka` was done against a

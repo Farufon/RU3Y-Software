@@ -91,13 +91,12 @@ Useful flags:
 | `--bind` | `0.0.0.0` | `127.0.0.1` for local only |
 | `--logdir` | `tools/logs/` | where the CSVs go |
 | `--radius` | 457.0 | rotor radius mm, used for `z_over_R` |
-| `--rpm-port` / `--rpm-stbd` | `0` / `1` | FT232H index or USB serial per nacelle |
+| `--tach` | `0` | the FT232H tach board: USB index or USB serial; `start.sh` fills it in |
 | `--rpm-poles` | 28 | MN6007 II is 24N28P |
 | `--rpm-ratio` | 3.0 or last set on page | motor:rotor; also a box on the page |
 | `--rpm-window` | 0.05 | seconds per rpm sample |
-| `--no-rpm` | | thrust only, no tach readers |
+| `--no-rpm` | | thrust only, no tach reader |
 | `--power-port` | | serial device of the power-meter Nano (doc 17); omit to type volts/amps |
-| `--single` / `--dual` | `--single` here; `--dual` in the sibling package `thrust-torque_deployed` | one nacelle on the bench (one RPM card, one power card) or port and stbd side by side |
 | `--open` | | open the browser on the port actually bound; `start.sh` passes it |
 
 Nothing here touches the ESC or the motor. It reads the cell and the tachs and
@@ -111,18 +110,11 @@ same thing.
 **Live number.** Current thrust in lbf, plus newtons, raw counts, and the age
 of the last sample. Goes amber if samples stop arriving.
 
-**One nacelle or two.** This package (`single`) defaults to the layout for
-the bench with one nacelle on the stand: one rotor RPM card and one pack
-power card, each beside its strip chart, with a narrow number column and a
-wide chart. The RPM card follows
-whichever tach sees a rotor turning (above 30 rpm) and stays on it when the
-motor stops; the power card follows whichever meter channel has a pack on
-its divider. Both titles name the channel they are showing, so the stbd
-hardware can stay plugged in without confusing anything. `--dual` puts the
-port and stbd cards side by side, which is the default in the sibling package
-`../thrust-torque_deployed`. The capture
-logic is the same in both layouts: an idle tach that is still printing zeros
-is never averaged into `head_rpm_actual`.
+**One stand.** This package (`single`) is for one nacelle on the bench: one
+thrust card, one rotor RPM card, one pack power card, each beside its strip
+chart, with a narrow number column and a wide chart. There are no port or
+starboard designations anywhere in it. The two-nacelle package with those
+channels is `../thrust-torque_deployed`.
 
 **Strip chart.** Last 90 seconds, autoscaled, with a dashed line at zero.
 
@@ -141,21 +133,35 @@ sign, so recalibrating undoes a previous flip. The settings line under the live
 number shows `sign` at all times; check it reads `-1` before a run. Doc 05 has
 the full argument.
 
-**Rotor RPM, port and starboard.** Two panels and a strip chart fed by the
-FT232H tachs on the Castle ESCs. Rotor rpm big, motor rpm and edges per window
-under it, 5 s mean and sd. Red is port, green is starboard. Doc 16 covers
-building the reader, picking boards by serial, and what the dots mean.
+**Rotor RPM.** A card and a strip chart fed by the FT232H tach on the Castle
+ESC. Rotor rpm big, motor rpm and edges per window under it, 5 s mean and
+sd. Doc 16 covers building the reader and what the dot means.
 
-**Pack power.** With `--power-port`, a third card shows watts, volts and
-amps from the hall-sensor Nano with its own strip and a console for the
-calibration commands. Doc 17.
+**Pack power.** With `--power-port`, a card shows watts, volts and amps from
+the hall-sensor Nano with its own strip and a console for the calibration
+commands (`ka 18.4`, `kv 24.87`, no channel letter). Doc 17.
+
+**Calibrate the load cell.** A three-step card that runs the doc 05
+sequence from the browser. Step 1, Tare, with only the nacelle on the mount.
+Step 2, stack the known weight (15 lb by default, editable), press
+Calibrate: the page sends `c <lbf>`, then `f`, because the weight presses
+the cell in compression while thrust pulls it in tension, then `d`, and
+reports calFactor, the read-back with the weight on, and the sign, which
+must be `-1`. Step 3 shows the live number: take the weight off, lift the
+mount by hand, and it must go positive. If it goes negative the message says
+so and Flip sign is the fix. Then set it down and Tare before the first run.
+The manual buttons (Tare, Settings, Flip sign, the free-text box) still do
+the same things one at a time.
 
 **Capture point.** Fill in height, RPM cmd, collective, throttle, then press
 Capture. Volts and amps fill from the power meter if it is running, else
-type them. It averages the last 5 seconds of thrust and of each tach,
+type them. It averages the last 5 seconds of thrust and of the tach,
 appends one row to `run-log.csv` in the schema `reduce.py` already expects,
-and fills `head_rpm_actual` from whichever tach is live unless you typed one.
-`z_over_R` is computed for you.
+and fills `head_rpm_actual` from the tach unless you typed one (a tach that
+is printing zeros because nothing is turning counts as no reading, not as
+0 rpm). `z_over_R` is computed for you. The row also carries `rpm_tach` (the
+tach average even when you typed the actual) and `watts` (the mean of
+instantaneous V x I from the meter, which `reduce.py` prefers).
 
 **Power chart.** BEMT-predicted electrical watts against thrust for 1000
 through 2000 rpm, the 7.5 lbf target line, an amber diamond at the flight-test
@@ -175,8 +181,8 @@ wall-clock timestamp alongside the board's `millis()`. New file each launch.
 `logs/run-log.csv` gets one row per captured grid point. Appended across
 launches, so it accumulates. Feed it straight to `reduce.py`.
 
-`logs/rpm-YYYYmmdd-HHMMSS.csv` gets every tach row from both boards. New file
-each launch. See doc 16.
+`logs/rpm-YYYYmmdd-HHMMSS.csv` gets every tach row. New file each launch.
+See doc 16.
 
 `logs/power-YYYYmmdd-HHMMSS.csv` gets every power-meter row. New file each
 launch. See doc 17.
@@ -249,6 +255,12 @@ steps, ground-effect entry.
 The header shows the Mac's local time of day as HH:MM:SS.tenths, in the same size as the thrust and RPM readouts. It is the same clock that stamps `iso_time` in every log row, so a camera pointed at the screen gives video a reference that lines up with the CSVs to about a tenth of a second (display refresh 100 ms; log rows carry milliseconds).
 
 
-## Two-channel power (2026-10-15.3)
+## Single package (2026-10-28.1-single)
 
-The power meter now reads both packs on one Nano (port A0/A1, stbd A2/A3). Two power cards, one strip with both channels, calibration commands take a channel letter: `ka p 18.4`, `kv s 24.87`. See docs/17.
+One tach, one power channel, no port or starboard anywhere. The power meter
+sketch in this package is single-channel (A0/A1) and its calibration commands
+take no channel letter: `ka 18.4`, `kv 24.87`. A Nano still carrying the
+two-channel sketch is accepted (its first channel is used) until you re-flash.
+The run log has `rpm_tach` and `watts` columns in place of the two-nacelle
+package's `rpm_port`, `rpm_stbd`, `volts_stbd`, `amps_stbd`, `power_ch`.
+The load-cell calibration wizard is new in this version. See docs/17, 18.

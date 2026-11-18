@@ -1,14 +1,13 @@
 #!/bin/bash
 # start.sh - find every board and start live.py with all of them.
 #
-#   bash tools/start.sh              # probe, then launch (one-nacelle dashboard; this is the 'single' package)
-#   bash tools/start.sh --dual       # port and stbd side by side, as in ../thrust-torque_deployed
+#   bash tools/start.sh              # probe, then launch
 #   bash tools/start.sh --no-probe   # launch from the last ports.json
-#   bash tools/start.sh --no-rpm     # skip the tach readers
+#   bash tools/start.sh --no-rpm     # skip the tach reader
 #
 # Steps: kill stale instances (stop.sh), build the RPM reader if it is not
 # there, probe the USB devices (find_ports.py), then launch live.py with
-# --port / --power-port / --rpm-port / --rpm-stbd filled in from ports.json.
+# --port / --power-port / --tach filled in from ports.json.
 # Any extra arguments are passed through to live.py.
 
 set -u
@@ -56,11 +55,13 @@ fi
 
 [ -f ports.json ] || { echo "no ports.json. Run without --no-probe."; exit 1; }
 
-read -r THRUST POWER RPMP RPMS <<< "$(python3 - <<'EOF'
+read -r THRUST POWER TACH <<< "$(python3 - <<'EOF'
 import json
 d = json.load(open("ports.json"))
-n = d.get("nanos", {}); r = d.get("rpm", {})
-print(n.get("thrust", "-"), n.get("power", "-"), r.get("port") or "-", r.get("stbd") or "-")
+n = d.get("nanos", {}); r = d.get("rpm", "")
+if isinstance(r, dict):            # a ports.json written by the two-nacelle package
+    r = r.get("port") or r.get("stbd") or ""
+print(n.get("thrust", "-"), n.get("power", "-"), r or "-")
 EOF
 )"
 
@@ -70,9 +71,8 @@ fi
 
 ARGS=(--port "$THRUST")
 [ "$POWER" != "-" ] && ARGS+=(--power-port "$POWER")
-if [ "$RPMP" != "-" ]; then
-    ARGS+=(--rpm-port "$RPMP")
-    [ "$RPMS" != "-" ] && ARGS+=(--rpm-stbd "$RPMS")
+if [ "$TACH" != "-" ]; then
+    ARGS+=(--tach "$TACH")
 else
     ARGS+=(--no-rpm)
 fi
@@ -80,7 +80,7 @@ fi
 echo "== launching"
 echo "   thrust  $THRUST"
 echo "   power   $POWER"
-echo "   rpm     port=$RPMP  stbd=$RPMS"
+echo "   tach    $TACH"
 LANIP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
 echo "   python3 live.py --open ${ARGS[*]} ${EXTRA[*]:-}"
 echo

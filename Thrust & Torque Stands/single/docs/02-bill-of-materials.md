@@ -72,7 +72,7 @@ ground effect is the thing being measured. Three splayed legs, nothing solid und
 | 17a | Blade pitch gauge | Digital-readout heli pitch gauge, clamps at 0.75R (r = 343 mm). This is the inner test axis; without it you are logging servo counts. See doc 05a. |
 | 17b | Servo tester | To command specific microsecond values during the pitch calibration. Your transmitter will do if it can show the raw value. |
 | 18 | Calibration weights | 2, 5 and 10 lb, or gym plates verified on a known-good scale. Non-negotiable. |
-| 19 | Power meter: two Pololu ACS724 -50..+50 A carriers (item 4049), one per pack, third Nano, two 100k/10k dividers | Replaces the LCD watt meter. Port and stbd volts and amps into the dashboard on one board, hall sensors so the negative leads stay unbroken. Doc 17. |
+| 19 | Power meter: one Pololu ACS724 -50..+50 A carrier (item 4049), third Nano, one 100k/10k divider | Replaces the LCD watt meter. Pack volts and amps into the dashboard, hall sensor so the negative lead stays unbroken. Doc 17. |
 | 20 | Tape measure / height gauge | Rotor plane to floor, at each ladder step. |
 
 ## Consumables and safety

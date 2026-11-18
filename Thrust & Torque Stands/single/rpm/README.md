@@ -30,7 +30,7 @@ FT232H_RPM_Handbook/
 Motor: **T-Motor Antigravity MN6007 II 320KV, 24N28P** (28 magnets, 14 pole pairs).
 Drivetrain: **3:1** helical step-down, motor to rotor. Both are the compiled defaults, so
 `./rpm_reader_static --index 0` is a complete command. `tools/live.py` runs two of these
-itself (port and starboard) and shows them on the thrust page; see `docs/16-rpm-tach.md`.
+itself and shows rotor RPM on the thrust page; see `docs/16-rpm-tach.md`.
 The two-window method below is for checking a board without the dashboard.
 
 ## Quick Start

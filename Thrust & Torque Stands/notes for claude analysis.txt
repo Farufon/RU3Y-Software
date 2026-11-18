@@ -1,0 +1,29 @@
+Take Two shutdown at 15:28:30:.3
+
+This was what I was calling, 60º root angle.   At 46º root angle, blade tip is zero AOA level —but 0.75 station is 12.3º +AOA.
+
+This means that at 60º - when the tip was at +14º, the actual true pitch of the blade at the three quarter station point, (thickest cord) was at +26.5º AOA.  For any helicopter blade that’s madness, but one with a foil like this, and a twist, I’m surprised I didn’t rip the props off. 
+
+All good… changed linkages.
+
+5.808lbf
+1453 rpm
+49 A right before the 50A limit
+1132 w
+
+Also, we started at 3:1 to work up, and yep… time for 4:1.  The other reason this was taxing the ESC is it wasn’t near full throttle for that RPM.  
+
+
+
+The cleanest high point I reached scales to 8.2 lbf at 1800. Past that I only have stalled data. 383W - About 8.0deg pitch at 0.75 R.  This seems to be it’s hover limit.
+
+Obviouosly when I pushed to 26 degree pitch and past 1400, I crapped out the ESC.  Which makes sense, as it pulled 1132 W and 49A… right under the 50A limit.  To give you and idea of the efficency of those props, anything past the sweetspot was 800W of churning air.  
+
+This test stand is so cool.    Changing linkages and multiple runs… the hardware is holding up. 
+
+I am giving these gears a lot of churn!!
+
+j.
+
+
+

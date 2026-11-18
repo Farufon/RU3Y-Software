@@ -34,6 +34,8 @@ All user parameters are mm / degrees.
 
 import adsk.core, adsk.fusion, traceback, math
 
+SCRIPT_NAME = '3p5-to-1_helical_rev3_20261117-1817'   # shown in the message box so you can tell which file ran
+
 # ----------------------- GEAR PARAMETERS (mm / degrees) -----------------------
 CENTER_DISTANCE = 31.87997   # axle to axle, from the STEP. Do not change.
 PINION_TEETH    = 18         # even only. 18 -> 18/63 (tooth size as the 3:1 pair).  20 -> 20/70 (10% smaller teeth)
@@ -603,6 +605,10 @@ def run(context):
         app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
         design = adsk.fusion.Design.cast(app.activeProduct)
         root   = design.rootComponent
+        try:
+            root.description = SCRIPT_NAME
+        except:
+            pass
 
         # Mesh phase. In the placed assembly the gear is on the pinion's +X side.
         # Pinion: a tooth on the line of centers at Z = 0. Its component is built
@@ -624,6 +630,15 @@ def run(context):
         except:
             pass
 
+        # Hide the loft sketches and construction planes. The first and last
+        # sit exactly on the tooth end faces and show up as dark streaks there.
+        for occ in (occ1, occ2):
+            for prop in ('isSketchFolderLightBulbOn', 'isConstructionFolderLightBulbOn'):
+                try:
+                    setattr(occ.component, prop, False)
+                except:
+                    pass
+
         for occ, m in ((occ1, placement(clock, -CENTER_DISTANCE * MM)),
                        (occ2, placement(0.0, 0.0))):
             try:
@@ -631,9 +646,25 @@ def run(context):
             except:
                 occ.transform = m
 
+        # Capture Position. In a parametric design, moving occurrences from the
+        # API leaves the move uncaptured; the design then falls back to the
+        # unmoved positions when it is inserted into another design (both gears
+        # at the origin, axes turned 90 deg). A snapshot records the placement.
+        # Design.snapshots.add() is the API form of Capture Position. Autodesk:
+        # "Creating a snapshot is only valid when the HasPendingTransforms
+        # property returns true."
+        captured = False
+        try:
+            snaps = design.snapshots
+            if snaps.hasPendingTransforms:
+                snaps.add()
+            captured = not snaps.hasPendingTransforms
+        except:
+            captured = False
+
         app.activeViewport.fit()
         ui.messageBox(
-            'Helical gear pair created.\n\n'
+            'Helical gear pair created by ' + SCRIPT_NAME + '\n\n'
             'Ratio: {}:1  ({}T / {}T)\n'
             'Center distance: {:.5f} mm (held)\n'
             'Normal module: {:.5f} mm   Transverse: {:.5f} mm\n'
@@ -643,6 +674,7 @@ def run(context):
             'Root fillet {:.3f} mm   Tip break: pinion {} mm, gear {} mm\n'
             'Mesh backlash {:.3f} mm at mid face, {:.3f} mm at the face ends\n'
             'Pinion teeth {:.3f} mm long, {} mm past the gear face at each end\n\n'
+            'Position captured: {}\n'
             'M2.5x0.45 cosmetic thread: {}'.format(
                 GEAR_RATIO, N2, N1, CENTER_DISTANCE,
                 geom['mn'] / MM, geom['mt'] / MM, HELIX_ANGLE, FACE_WIDTH,
@@ -651,6 +683,7 @@ def run(context):
                 ROOT_FILLET * geom['mn'] / MM, PINION_TIP_BREAK, GEAR_TIP_BREAK,
                 2 * BACKLASH, 2 * (BACKLASH + CROWN),
                 FACE_WIDTH + 2 * max(0.0, PINION_OVERHANG), PINION_OVERHANG,
+                'yes' if captured else 'NO (use Assemble > Capture Position before saving)',
                 'added' if threaded else
                 'NOT added (hole is at tap-drill size 2.0755 mm, add the thread by hand)'))
 

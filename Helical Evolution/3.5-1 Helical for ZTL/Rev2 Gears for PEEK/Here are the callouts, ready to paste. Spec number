@@ -1,0 +1,42 @@
+Here are the callouts, ready to paste. Spec numbers are from memory, so have your supplier and anodizer confirm the current revisions before you release the drawings.
+
+Pinion (motor gear)
+MATERIAL: ALUMINUM ALLOY 7075-T651 ROUND BAR
+          PER AMS 4123 OR AMS-QQ-A-225/9
+
+FINISH:   HARD ANODIZE WITH PTFE PER AMS 2482
+          (BASE COAT MIL-A-8625 TYPE III, CLASS 1, UNDYED)
+          COATING THICKNESS 0.025 MM +/- 0.005 (0.0010 IN +/- 0.0002)
+
+NOTES:
+1. DIMENSIONS APPLY BEFORE COATING.
+2. MASK 4.10 AND 6.00 BORES. NO COATING IN BORES.
+3. TOOTH FLANKS 0.8 MICROMETER Ra (32 MICROINCH) MAX BEFORE COATING.
+4. BREAK ALL SHARP EDGES 0.05 MM MIN BEFORE COATING. TOOTH ENDS INCLUDED.
+5. NO RACK MARKS ON TOOTH FLANKS OR TIPS. RACK ON FLANGE BOLT HOLES.
+Gear (mast gear)
+MATERIAL: PEEK, UNFILLED (VIRGIN), NATURAL COLOR, EXTRUDED ROD
+          PER ASTM D6262. ANNEALED / STRESS RELIEVED.
+          ACCEPTABLE: KETRON 1000 PEEK, TECAPEEK NATURAL, OR EQUAL
+          (VICTREX 450G BASE RESIN).
+          NO GLASS, CARBON, OR BEARING-GRADE FILLED MATERIAL.
+
+FINISH:   NONE. AS MACHINED.
+
+NOTES:
+1. TOOTH FLANKS 1.6 MICROMETER Ra (63 MICROINCH) MAX.
+2. DEBURR TOOTH ENDS. NO HEAT DISCOLORATION OR MELTED EDGES.
+3. M2.5 X 0.45 - 6H THREAD AS SHOWN.
+What to order
+Item	Stock	Why that size
+7075-T651 round bar	1.25 in (32 mm) diameter	Flange is 26.6 mm; part is 21.5 mm long
+PEEK natural rod	2.25 in (57 mm) diameter	Largest gear is 52.5 mm OD; part is 16.1 mm tall
+
+Buy enough length for several of each. A foot of both covers a set per ratio with spares.
+
+Three choices I made that you should know about
+Thinner anodize than I assumed earlier. I used 0.05 mm when sizing backlash. For teeth this small, 0.025 mm is the better callout because thick hard coat chips on fine edges. It leaves you slightly more backlash than planned, which is harmless.
+Bores masked. Anodize grows about half its thickness on each surface, so an unmasked 6.00 mm bore would shrink by about 0.025 mm and may not fit the shaft. If your anodizer prefers not to mask, cut the bores oversize by that amount instead.
+7075 anodizes less well than 6061. The coating comes out a little softer and less uniform. It is still the right choice here because the tooth cores need 7075’s strength.
+
+When you call the anodizer, ask for PTFE hard coat by name. Shops sell it as Nituff, Tufram or Hardtuf.

@@ -5,9 +5,9 @@
   },
   "rpm": {
     "port": "0",
-    "stbd": "1"
+    "stbd": ""
   },
   "unknown": [],
-  "probed": "2026-10-23 13:08:42",
-  "rpm_note": "assigned by you just now; serials are blank so these are USB indices and follow the hub socket"
+  "probed": "2026-11-09 14:19:13",
+  "rpm_note": "only one tach board present, assigned to PORT; serials are blank so these are USB indices and follow the hub socket"
 }

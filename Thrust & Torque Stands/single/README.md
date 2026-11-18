@@ -1,13 +1,17 @@
 # Nacelle Thrust Stand (single-nacelle package)
 
-**This folder, `single`, is the bench variant: one nacelle on the stand.** It is
-a complete copy of `../thrust-torque_deployed` with the one-nacelle dashboard as
-its default (one thrust card, one rotor RPM card, one pack power card). Same
-firmware, same docs, same tools; only the default layout differs, and `--dual`
-brings the port/stbd layout back here if you want it. Fixes made in one folder
-have to be carried to the other by hand. It has its own `tools/logs/` and its
-own `tools/ports.json`, so the first `bash tools/start.sh` here probes the hub
-again, and it builds its own copy of the rpm reader.
+**This folder, `single`, is the bench variant: one nacelle on the stand.** One
+thrust cell, one tach, one pack, one power sensor. There are no port or
+starboard designations anywhere in it: not in the dashboard, the command-line
+flags, the log columns, the power-meter firmware or its calibration commands.
+The two-nacelle package with those channels is `../thrust-torque_deployed`;
+the thrust and torque sketches and most of the docs are shared text, and a fix
+made in one folder has to be carried to the other by hand. This folder has its
+own `tools/logs/` and `tools/ports.json`, so the first `bash tools/start.sh`
+here probes the hub, and it builds its own copy of the rpm reader.
+
+The dashboard also has a guided load-cell calibration (tare, stack the known
+weight, calibrate, lift to check the sign). `docs/12-live-readout.md`.
 
 An axial-post thrust stand for measuring single-nacelle thrust, electrical power, and
 ground-effect behaviour on a 914 mm-disc (R = 457 mm) VTOL tilt-rotor nacelle.
@@ -150,9 +154,9 @@ screen -L -Logfile ~/thrust-run.txt /dev/cu.usbserial-1480 115200
 - **CoolTerm** (free, GUI): scrollback, logging, timestamps. Easier than
   `screen` for long runs.
 - **`tools/live.py`** is the best option in this branch: browser dashboard,
-  strip chart, logging, BEMT overlay, port and starboard rotor RPM from the
-  tachs, pack power from the hall-sensor Nano, and it works from an iPad over
-  the VPN. See `docs/12-live-readout.md`, `docs/16-rpm-tach.md` and
+  strip chart, logging, BEMT overlay, rotor RPM from the tach, pack power from
+  the hall-sensor Nano, a guided load-cell calibration, and it works from an
+  iPad over the VPN. See `docs/12-live-readout.md`, `docs/16-rpm-tach.md` and
   `docs/17-power-meter.md`.
 - **`tools/bench.py`** is the guided grid-capture session. It drives the same port, prompts through the height / RPM /
   collective grid, and writes `data/run-log.csv` directly. No transcribing
@@ -300,7 +304,7 @@ docs/12-live-readout.md            tools/live.py: browser dashboard, logging, po
 docs/13-arduino-working-config.md  THE PROVEN SETTINGS. Read this one first if stuck.
 docs/14-torque-stand.md            the separate torque rig: second board, second cell
 docs/15-python-venv.md             Python on the Mac. Do this before any tools/ command.
-docs/16-rpm-tach.md                port/starboard RPM from the Castle ESCs via FT232H, into live.py
+docs/16-rpm-tach.md                rotor RPM from the Castle ESC via FT232H, into live.py
 docs/17-power-meter.md             pack volts/amps/watts from a hall sensor + Nano, into live.py
 docs/18 - One command to start everything.md
                                    tools/start.sh: probe the hub, launch live.py with every board
@@ -317,13 +321,14 @@ firmware/torque_stand/
     torque_stand.ino               second board. reports torque in N.m. See docs/14.
 
 firmware/power_meter/
-    power_meter.ino                third board. ACS724 hall sensor + divider, volts/amps/watts. See docs/17.
+    power_meter.ino                third board. ONE ACS724 hall sensor + divider on A0/A1,
+                                   volts/amps/watts, 'ka 18.4' / 'kv 24.87'. See docs/17.
 
 rpm/
     src/rpm_reader.c               FT232H edge counter, Castle AUX RPM OUT -> rpm CSV on stdout
     scripts/build_static.sh        builds rpm_reader_static and list_ftdi here. Run once.
     vendor/ftdi/                   FTDI D2XX header and static lib
-    docs/                          the FT232H handbook: Castle Link setup, wiring, two boards
+    docs/                          the FT232H handbook: Castle Link setup, wiring
 
 cad/
     torque_cradle.py               Fusion script, builds the torque cradle parts

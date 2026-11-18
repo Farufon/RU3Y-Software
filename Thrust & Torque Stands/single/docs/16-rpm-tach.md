@@ -1,10 +1,9 @@
-# 16 - Port and starboard rotor RPM in `live.py` (FT232H tachs)
+# 16 - Rotor RPM in `live.py` (FT232H tach)
 
-Two Adafruit FT232H breakouts, one per nacelle, each counting the Castle ESC's
-AUX **RPM OUT** pulses. `live.py` runs the compiled reader for both boards as
-child processes, parses their CSV, and shows two rotor RPM numbers and a
-shared 90 second strip chart under the thrust panel. Capture fills
-`head_rpm_actual` from the tach so you stop typing it.
+One Adafruit FT232H breakout counting the Castle ESC's AUX **RPM OUT**
+pulses. `live.py` runs the compiled reader for it as a child process, parses
+its CSV, and shows rotor RPM with a 90 second strip chart under the thrust
+panel. Capture fills `head_rpm_actual` from the tach so you stop typing it.
 
 The reader itself, its FTDI library, the Castle Link setup and the wiring
 handbook all live in `rpm/`. This doc is the part that touches the stand.
@@ -38,81 +37,85 @@ bash rpm/scripts/build_static.sh
 ```
 
 Produces `rpm/rpm_reader_static` and `rpm/list_ftdi`. Needs `clang` from the
-Apple command line tools. The binary is not in the zip; rebuild after every
-unpack. `live.py` looks for it in `rpm/` beside `tools/` and says so at
-startup if it is missing.
+Apple command line tools. The binaries are not tracked in git; `start.sh`
+builds them if they are missing. `live.py` looks for the reader in `rpm/`
+beside `tools/` and says so at startup if it is not there.
 
-## Which board is which
+## Which board
 
-FTDI indexes `0` and `1` are assigned in enumeration order and can swap when
-you replug or change USB sockets. Serial numbers do not move:
+`start.sh` finds it. By hand:
 
 ```
 cd rpm
 ./list_ftdi
 # index=0  serial=FT6JABCD  desc=Single RS232-HS
-# index=1  serial=FT6JEFGH  desc=Single RS232-HS
 ```
 
-Then start by serial and the assignment is permanent:
+A board with a serial number is started by serial and the plug can move:
 
 ```
-python3 live.py --port /dev/cu.usbserial-1480 --rpm-port FT6JABCD --rpm-stbd FT6JEFGH
+python3 live.py --port /dev/cu.usbserial-1480 --tach FT6JABCD
 ```
 
-Label the boards. Port is red on the chart, starboard green, to match the
-arm LEDs.
+Adafruit boards usually have a blank serial, in which case `--tach 0` (the
+default) is all there is, and that index follows the hub socket. `find_ports.py`
+writes whichever applies into `ports.json`. One stand, one board; if more are
+plugged in the first is used and you are told.
 
 ## Running
 
 ```
-source ~/venvs/forcerigs/bin/activate
-cd tools
-python3 live.py --port /dev/cu.usbserial-1480
+bash tools/start.sh
 ```
 
-Defaults are index 0 = port, index 1 = starboard, 28 poles, 3:1, 50 ms. The
-banner prints the reader path and settings. `--no-rpm` runs thrust only.
+or by hand:
+
+```
+source ~/venvs/forcerigs/bin/activate
+cd tools
+python3 live.py --port /dev/cu.usbserial-1480 --tach 0
+```
+
+Defaults are 28 poles, 3:1, 50 ms. The banner prints the reader path and
+settings. `--no-rpm` runs thrust only.
 
 The gear ratio is a box on the page, next to the RPM chart: type the
 motor:rotor ratio and press Apply or Enter. It takes effect on the next tach
-row, both panels, no restart. The value is kept in `tools/live-settings.json`
-and comes back on the next launch; `--rpm-ratio` on the command line
-overrides it and stores it. The reader binary only reports motor rpm to
-live.py; rotor rpm is computed in live.py, which is why the box can change
-it live. `logs/rpm-*.csv` carries the ratio in force on every row.
+row, no restart. The value is kept in `tools/live-settings.json` and comes
+back on the next launch; `--rpm-ratio` on the command line overrides it and
+stores it. The reader binary only reports motor rpm to live.py; rotor rpm is
+computed in live.py, which is why the box can change it live.
+`logs/rpm-*.csv` carries the ratio in force on every row.
 
-Each RPM panel has a dot: green with rows arriving, amber if the reader is up
-but nothing has come in for 1.5 s, red if the reader process is down (the
-last stderr line is shown). A down reader restarts itself every 3 s, so
-replugging a board recovers without restarting `live.py`.
+The RPM card has a dot: green with rows arriving, amber if the reader is up
+but nothing has come in for 1.5 s, red if the reader process is down (its
+last complaint is shown). A down reader restarts itself every 3 s, so
+replugging the board recovers without restarting `live.py`.
 
-In a thrust run only the nacelle on the stand is spinning, so one panel reads
-and the other sits at zero. Capture takes whichever tach is live as
-`head_rpm_actual`. If both are live (spin test), it takes the mean of the
-two, and the per-nacelle averages go in `rpm_port` and `rpm_stbd` regardless.
-Typing a value in the RPM actual box overrides the tach for that row.
+Capture takes the tach's 5 s average as `head_rpm_actual`. The reader prints
+a row every window whether or not anything is turning, so below 30 rpm the
+tach counts as no reading rather than as 0 rpm. Typing a value in the RPM
+actual box overrides the tach for that row; the tach average still goes in
+`rpm_tach`.
 
 ## Log files
 
-`logs/rpm-YYYYmmdd-HHMMSS.csv` gets every reader row from both boards, 20
-rows per second per board at the default window, tagged `port` or `stbd`.
-Columns: `iso_time, epoch_s, channel, edges, motor_rpm, rotor_rpm`.
+`logs/rpm-YYYYmmdd-HHMMSS.csv` gets every reader row, 20 rows per second at
+the default window. Columns: `iso_time, epoch_s, edges, motor_rpm,
+rotor_rpm, ratio`.
 
-`logs/stream-*.csv` gains `rpm_port, rpm_stbd` on every thrust row: the latest
-rotor rpm from each tach if it is under a second old, else blank.
+`logs/stream-*.csv` carries `rpm` on every thrust row: the latest rotor rpm
+if it is under a second old, else blank.
 
-`logs/run-log.csv` gains `rpm_port, rpm_stbd` at the end. An older run-log
-without those columns is widened in place on first launch (old rows padded
-with blanks, nothing lost, the banner says so). `reduce.py` ignores the two
-new columns.
+`logs/run-log.csv` carries `head_rpm_actual` and `rpm_tach`. `reduce.py`
+uses the first.
 
 ## Wiring recap
 
-Per nacelle: ESC white (AUX) through **1 kΩ** to FT232H **D0**, ESC ground to
-FT232H **GND**. Nothing to the FT232H 5 V or 3.3 V pins; it is USB powered.
-Keep the white lead short. `rpm/docs/` has the full handbook and the Castle
-Link steps to set AUX to RPM OUT.
+ESC white (AUX) through **1 kΩ** to FT232H **D0**, ESC ground to FT232H
+**GND**. Nothing to the FT232H 5 V or 3.3 V pins; it is USB powered. Keep the
+white lead short. `rpm/docs/` has the full handbook and the Castle Link steps
+to set AUX to RPM OUT.
 
 Nothing crosses the torque cradle (doc 14). The tach lead goes down the tube
 with the throttle lead.
@@ -123,7 +126,7 @@ with the throttle lead.
   index or serial is not there. Run `./list_ftdi`.
 - **`FT_STATUS=3`**, device in use, means another copy of the reader is still
   holding it. `bash tools/stop.sh` kills them.
-- **Two Terminal windows from `run_dual.scpt` and `live.py` cannot share a
+- **A Terminal window from `run_dual.scpt` and `live.py` cannot share the
   board.** Pick one.
 - **Edges but wrong rpm** is poles or ratio, not wiring. Check `edges/win`
   against the 63 at hover figure above.

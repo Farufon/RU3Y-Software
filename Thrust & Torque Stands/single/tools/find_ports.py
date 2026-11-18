@@ -10,11 +10,11 @@ and the boot banner says what it is:
     "Nacelle Thrust Stand"  -> thrust
     "Nacelle Power Meter"   -> power
     "torque stand"          -> torque
-FT232H tach boards: rpm/list_ftdi prints their USB serial numbers. The serial
-never changes when you move the plug, so live.py is handed serials, not indices.
-Which FT232H is PORT and which is STBD is a label on the board, not something
-the computer can see, so the first time two are found you are asked once and the
-answer is kept in ports.json. Re-run with --reassign-rpm to ask again.
+The tach board: rpm/list_ftdi prints the FT232H's USB serial number, which
+does not change when you move the plug, so live.py is handed the serial. A
+board with a blank serial (common on Adafruit's) is handed its USB index
+instead, which follows the hub socket. One stand, one tach board; if more
+are plugged in the first is used and you are told.
 
 Result goes to tools/ports.json. start.sh reads it.
 """
@@ -88,40 +88,31 @@ def load_previous():
     return {}
 
 
-def assign_rpm(found, previous, reassign):
-    """Return {'port': serial, 'stbd': serial}. Keep an old assignment if the boards match."""
-    # Adafruit FT232H boards often ship with a blank serial. Then the USB index
-    # (0, 1 in plug order) is all there is, and it follows the hub socket.
-    serials = [d["serial"] or str(d["index"]) for d in found]
+def assign_rpm(found, previous):
+    """Return the selector for THE tach board: its USB serial, or its index.
+
+    One test stand, one FT232H. Adafruit boards often ship with a blank serial,
+    and then the USB index (0 in plug order) is all there is; it follows the
+    hub socket. If more than one board is present the first one is used and
+    the rest are listed, so unplug the ones that are not on this stand.
+    """
     for d in found:
         d["key"] = d["serial"] or str(d["index"])
-    old = (previous.get("rpm") or {})
-    if (not reassign and old.get("port") in serials and old.get("stbd") in serials
-            and old["port"] != old["stbd"]):
-        return {"port": old["port"], "stbd": old["stbd"]}, "kept from last time"
-    if len(serials) == 1:
-        return {"port": serials[0], "stbd": ""}, "only one tach board present, assigned to PORT"
-    if len(serials) == 0:
-        return {"port": "", "stbd": ""}, "no tach boards present"
-    # two or more and no usable history: ask once
-    print("\nTwo FT232H tach boards found. Which is the PORT nacelle?")
-    for i, d in enumerate(found):
-        print(f"   [{i}] serial {d['serial'] or '(blank)'}   USB index {d['index']}")
-    print("Tip: unplug one, re-run, and the one that remains is the one you can see.")
-    while True:
-        ans = input("PORT is [0/1]: ").strip()
-        if ans in ("0", "1") and int(ans) < len(found):
-            p = found[int(ans)]["key"]
-            s = next(d["key"] for d in found if d["key"] != p)
-            return {"port": p, "stbd": s}, "assigned by you just now"
+    if not found:
+        return "", "no tach board present"
+    if len(found) == 1:
+        return found[0]["key"], "one tach board"
+    old = previous.get("rpm") or ""
+    keys = [d["key"] for d in found]
+    if old in keys:
+        return old, f"{len(found)} boards present, kept {old} from last time"
+    return keys[0], f"{len(found)} boards present, using the first; unplug the others or edit ports.json"
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--show", action="store_true", help="print ports.json and exit")
-    ap.add_argument("--reassign-rpm", action="store_true",
-                    help="ask again which FT232H is port and which is stbd")
     args = ap.parse_args()
 
     previous = load_previous()
@@ -129,7 +120,7 @@ def main():
         print(json.dumps(previous, indent=2) if previous else "no ports.json yet")
         return
 
-    result = {"nanos": {}, "rpm": {}, "unknown": [], "probed": time.strftime("%Y-%m-%d %H:%M:%S")}
+    result = {"nanos": {}, "rpm": "", "unknown": [], "probed": time.strftime("%Y-%m-%d %H:%M:%S")}
 
     devs = sorted(glob.glob("/dev/cu.usbserial-*"))
     print("== Nanos")
@@ -151,16 +142,16 @@ def main():
     found, note = list_ftdi()
     if found is None:
         print(f"   {note}")
-        result["rpm"] = previous.get("rpm", {})
+        result["rpm"] = previous.get("rpm", "")
         result["rpm_note"] = note
     else:
         for d in found:
             print(f"   index {d['index']}  serial {d['serial']}  {d['desc']}")
-        result["rpm"], how = assign_rpm(found, previous, args.reassign_rpm)
+        result["rpm"], how = assign_rpm(found, previous)
         if found and not any(d["serial"] for d in found):
-            how += "; serials are blank so these are USB indices and follow the hub socket"
+            how += "; serial is blank so this is the USB index and follows the hub socket"
         result["rpm_note"] = how
-        print(f"   PORT = {result['rpm'].get('port') or '-'}   STBD = {result['rpm'].get('stbd') or '-'}   ({how})")
+        print(f"   tach = {result['rpm'] or '-'}   ({how})")
 
     with open(OUT, "w") as f:
         json.dump(result, f, indent=2)

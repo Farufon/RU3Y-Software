@@ -43,15 +43,14 @@ except ImportError:
 LBF_TO_N = 4.4482216
 DEFAULT_BAUD = 115200
 # Keep in step with RUN_LOG_FIELDS in live.py; live.py owns the schema.
-# bench.py has no tachs or meter, so it leaves those columns blank, but the
+# bench.py has no tach or meter, so it leaves those columns blank, but the
 # header matches so the two tools can append to the same file and reduce.py
 # sees one shape.
 CSV_FIELDS = ["height_mm", "z_over_R", "head_rpm_cmd", "head_rpm_actual",
               "collective_deg", "servo_us", "throttle_pct",
               "thrust_lbf", "volts", "amps",
               "pack_soc", "notes",
-              "rpm_port", "rpm_stbd", "volts_stbd", "amps_stbd",
-              "watts", "power_ch"]
+              "rpm_tach", "watts"]
 
 # The ladders from docs/06-test-protocol.md.
 # Height is the OUTER loop, governed RPM the middle, collective the inner.
@@ -59,7 +58,7 @@ ROTOR_RADIUS_MM = 457.0          # confirmed 4 Sep 2026, hub centreline to tip
 Z_OVER_R_LADDER = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
 HEIGHT_LADDER = [round(z * ROTOR_RADIUS_MM) for z in Z_OVER_R_LADDER]
 
-VERSION = "2026-10-26.1"
+VERSION = "2026-10-28.1-single"
 
 RPM_LADDER = [1600, 1700, 1800, 1900, 2000]
 

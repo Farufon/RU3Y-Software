@@ -1,0 +1,71 @@
+# Starboard swash selector, 7 pitch positions + park, Pololu Maestro script
+# Channels: 0 FWD, 1 AFT, 2 VEC, 3 MOT, 4 SELECTOR (no servo attached).
+# The script writes ONLY channels 0 and 1. VEC and MOT stay on their sliders.
+#
+# Setup once, Channel Settings tab:
+#   channel 4: Mode = Servo, Min 992, Max 2000, Speed 0, Accel 0, On startup = 1000.
+#   channels 0,1: Speed 0, Accel 0, On startup/error = 1500 (unchanged).
+# Then Script tab: paste, Apply Settings, click "Run Script". Leave it running.
+#
+# Status tab, channel 4 slider picks the position (type the "set to" value):
+#   slider us      set to   position            FWD    AFT
+#   below 1125     1000     PARK (startup)      1500   1500
+#   1125 to 1250   1187     0 deg  neutral      1236   1745
+#   1250 to 1375   1312     3 deg  (hover)      1336   1645
+#   1375 to 1500   1437     6 deg  (hover)      1436   1545
+#   1500 to 1625   1562     9 deg  (cruise)     1536   1445
+#   1625 to 1750   1687     12 deg (cruise)     1636   1345
+#   1750 to 1875   1812     15 deg (cruise)     1736   1245
+#   above 1875     1937     18 deg              1836   1145
+# Each change ramps FWD and AFT together over 3 s (10 steps of 300 ms).
+# Script positions are quarter-microseconds (us x 4).
+
+0                               # last band = park
+begin
+  4 get_position band           # last new
+  over over equals
+  if
+    drop                        # same band, nothing to do
+  else
+    swap drop dup go            # new band: move, remember it
+  endif
+  100 delay
+repeat
+
+# band: ( pos -- n )  slider position to band 0..7
+sub band
+  dup 4500 less_than if drop 0 return endif
+  dup 5000 less_than if drop 1 return endif
+  dup 5500 less_than if drop 2 return endif
+  dup 6000 less_than if drop 3 return endif
+  dup 6500 less_than if drop 4 return endif
+  dup 7000 less_than if drop 5 return endif
+  7500 less_than if 6 return endif
+  7 return
+
+# go: ( n -- )  move to band n.  Trim a position by editing its two numbers (us x 4).
+sub go
+  dup 0 equals if drop 6000 6000 move2 return endif   # park    1500 1500
+  dup 1 equals if drop 4944 6980 move2 return endif   # 0 deg   1236 1745
+  dup 2 equals if drop 5344 6580 move2 return endif   # 3 deg   1336 1645
+  dup 3 equals if drop 5744 6180 move2 return endif   # 6 deg   1436 1545
+  dup 4 equals if drop 6144 5780 move2 return endif   # 9 deg   1536 1445
+  dup 5 equals if drop 6544 5380 move2 return endif   # 12 deg  1636 1345
+  dup 6 equals if drop 6944 4980 move2 return endif   # 15 deg  1736 1245
+  drop 7344 4580 move2 return                         # 18 deg  1836 1145
+
+# move2: ( fwd aft -- )  step channels 0 and 1 to targets, 10 steps x 300 ms
+sub move2
+  10 300
+  3 pick 0 get_position minus 2 pick divide     # dfwd
+  3 pick 1 get_position minus 3 pick divide     # daft
+  3 pick                                        # counter
+  begin dup while
+    0 get_position 3 pick plus 0 servo
+    1 get_position 2 pick plus 1 servo
+    3 pick delay
+    1 minus
+  repeat
+  drop drop drop drop drop
+  1 servo 0 servo                               # land exactly on targets
+  return

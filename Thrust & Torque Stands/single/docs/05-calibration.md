@@ -41,6 +41,13 @@ Consequences that run through the whole procedure:
 Assemble the stand fully, **prop removed**, in the same orientation you will test in.
 Calibrating in a different orientation gives you a different answer.
 
+**From the dashboard:** `tools/live.py` has a "Calibrate the load cell" card
+that runs steps 4 to 8 below and the sign flip for you. Tare with only the
+nacelle on, stack the known weight (15 lb by default), press Calibrate, then
+take the weight off, lift the mount and confirm the number goes positive.
+What follows is the same sequence by hand over the serial monitor, and the
+reasoning behind it.
+
 1. Connect USB, open the serial monitor at **115200 baud**, set line ending to Newline.
 2. Send `d`. Confirm `HX711 ready : yes`. If not, check DT/SCK and 5V/GND.
 3. Let it sit powered for two minutes. Strain gauges drift with temperature and you want

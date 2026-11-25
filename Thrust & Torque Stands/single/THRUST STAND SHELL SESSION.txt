@@ -1,0 +1,714 @@
+
+Last login: Mon Oct 26 10:44:08 on ttys000
+jonfarhat@Jons-iMac-Pro single % bash tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  2x ACS724 +-50A + dividers  (port A0/A1, stbd A2/A3)
+== FT232H tach boards
+   index 0  serial   
+   PORT = 0   STBD = -   (only one tach board present, assigned to PORT; serials are blank so these are USB indices and follow the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   rpm     port=0  stbd=-
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --rpm-port 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-26.2-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          port=0  stbd=1  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+layout    single nacelle: one rpm card, one power card (--dual for port/stbd)
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+zsh: terminated  bash tools/start.sh
+jonfarhat@Jons-iMac-Pro single % bash tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   tach = 0   (one tach board; serial is blank so this is the USB index and follows the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   tach    0
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --tach 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-28.1-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          tach=0  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+^C
+stopped
+jonfarhat@Jons-iMac-Pro single % tools/start.sh
+zsh: permission denied: tools/start.sh
+jonfarhat@Jons-iMac-Pro single % ls
+cad		docs		INSTALL.md	rpm		VERSION
+data		firmware	README.md	tools
+jonfarhat@Jons-iMac-Pro single % cd tools
+jonfarhat@Jons-iMac-Pro tools % start.sh
+zsh: command not found: start.sh
+jonfarhat@Jons-iMac-Pro tools % cd ~/Desktop/thrust-torque_deployed
+cd: no such file or directory: /Users/jonfarhat/Desktop/thrust-torque_deployed
+jonfarhat@Jons-iMac-Pro tools % ls
+bemt_curves_v49.json	logs			start.sh
+bench.py		ports.json		stop.sh
+find_ports.py		reduce.py
+live.py			requirements.txt
+jonfarhat@Jons-iMac-Pro tools % start.sh
+zsh: command not found: start.sh
+jonfarhat@Jons-iMac-Pro tools % chmod +x tools/start.sh tools/stop.sh
+chmod: tools/start.sh: No such file or directory
+chmod: tools/stop.sh: No such file or directory
+jonfarhat@Jons-iMac-Pro tools % cd ..
+jonfarhat@Jons-iMac-Pro single % chmod +x tools/start.sh tools/stop.sh
+jonfarhat@Jons-iMac-Pro single % start.sh
+zsh: command not found: start.sh
+jonfarhat@Jons-iMac-Pro single % tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   tach = 0   (one tach board; serial is blank so this is the USB index and follows the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   tach    0
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --tach 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-28.1-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          tach=0  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+^C
+stopped
+jonfarhat@Jons-iMac-Pro single % rpm/rpm_reader_static --index 0
+# rpm_reader poles=28 pole_pairs=14 ratio=3.000 window=0.050 index=
+# index=0
+# t_s,edges,edges_per_s,motor_rpm,rotor_rpm
+0.050,0,0.0,0,0
+0.100,0,0.0,0,0
+0.150,0,0.0,0,0
+0.201,0,0.0,0,0
+0.251,0,0.0,0,0
+0.301,0,0.0,0,0
+0.389,0,0.0,0,0
+0.439,0,0.0,0,0
+0.489,0,0.0,0,0
+0.540,0,0.0,0,0
+0.590,0,0.0,0,0
+0.640,0,0.0,0,0
+0.690,0,0.0,0,0
+0.740,0,0.0,0,0
+0.790,0,0.0,0,0
+0.840,0,0.0,0,0
+0.890,0,0.0,0,0
+0.941,0,0.0,0,0
+0.991,0,0.0,0,0
+1.041,0,0.0,0,0
+1.093,0,0.0,0,0
+1.143,0,0.0,0,0
+1.193,0,0.0,0,0
+1.244,0,0.0,0,0
+1.294,0,0.0,0,0
+1.344,0,0.0,0,0
+1.394,0,0.0,0,0
+1.444,0,0.0,0,0
+1.494,0,0.0,0,0
+1.545,0,0.0,0,0
+1.595,0,0.0,0,0
+ 1.645,0,0.0,0,0
+1.695,0,0.0,0,0
+1.745,0,0.0,0,0
+1.795,0,0.0,0,0
+1.845,0,0.0,0,0
+1.895,0,0.0,0,0
+1.946,0,0.0,0,0
+1.996,0,0.0,0,0
+2.046,0,0.0,0,0
+2.096,0,0.0,0,0
+2.146,0,0.0,0,0
+2.196,0,0.0,0,0
+2.246,0,0.0,0,0
+2.296,0,0.0,0,0
+2.346,0,0.0,0,0
+2.396,0,0.0,0,0
+2.446,0,0.0,0,0
+2.496,0,0.0,0,0
+2.547,0,0.0,0,0
+2.597,0,0.0,0,0
+2.647,0,0.0,0,0
+2.697,0,0.0,0,0
+2.747,0,0.0,0,0
+2.797,0,0.0,0,0
+2.847,0,0.0,0,0
+2.898,0,0.0,0,0
+2.948,0,0.0,0,0
+2.998,0,0.0,0,0
+3.048,0,0.0,0,0
+3.098,0,0.0,0,0
+3.148,0,0.0,0,0
+3.198,0,0.0,0,0
+3.248,0,0.0,0,0
+3.299,0,0.0,0,0
+3.349,0,0.0,0,0
+3.399,0,0.0,0,0
+3.449,0,0.0,0,0
+3.499,0,0.0,0,0
+3.549,0,0.0,0,0
+3.599,0,0.0,0,0
+3.649,0,0.0,0,0
+3.700,0,0.0,0,0
+3.750,0,0.0,0,0
+3.800,0,0.0,0,0
+3.850,0,0.0,0,0
+3.900,0,0.0,0,0
+3.950,0,0.0,0,0
+4.000,0,0.0,0,0
+4.050,0,0.0,0,0
+4.101,0,0.0,0,0
+4.151,0,0.0,0,0
+4.201,0,0.0,0,0
+4.251,0,0.0,0,0
+4.301,0,0.0,0,0
+4.351,0,0.0,0,0
+4.401,0,0.0,0,0
+4.452,0,0.0,0,0
+4.502,0,0.0,0,0
+4.552,0,0.0,0,0
+4.602,0,0.0,0,0
+4.652,0,0.0,0,0
+4.702,0,0.0,0,0
+4.753,0,0.0,0,0
+^C
+jonfarhat@Jons-iMac-Pro single % tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   tach = 0   (one tach board; serial is blank so this is the USB index and follows the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   tach    0
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --tach 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-28.1-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          tach=0  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+^C
+stopped
+jonfarhat@Jons-iMac-Pro single % grep -n "rpm_reader\|index\|tach" tools/live.py | head -40
+5:SINGLE-NACELLE PACKAGE. One stand, one nacelle, one tach, one pack. This copy
+30:    rpm-YYYYmmdd-HHMMSS.csv      every tach row
+34:RPM comes from the FT232H tach board (rpm/ in this package). live.py spawns
+35:rpm_reader_static for it and shows rotor RPM beside the thrust number with its
+36:own strip chart. Capture fills head_rpm_actual from the tach unless you type
+41:    python3 live.py --port /dev/cu.usbserial-1480 --tach 0          # by USB index
+42:    python3 live.py --port /dev/cu.usbserial-1480 --tach FT6JABCD   # by USB serial
+51:Nothing here talks to the ESC or the motor. It reads the load cell, the tach
+90:    "rpm_tach",      # tach average over the capture window, even when head_rpm_actual was typed
+137:    """The FT232H tach board, read through rpm_reader_static as a subprocess.
+171:        sel = ["--serial", self.selector] if not self.selector.isdigit() else ["--index", self.selector]
+204:            if "rpm_reader" in line:
+470:    cands += [os.path.join(HERE, "..", "rpm", "rpm_reader_static"),
+471:              os.path.join(HERE, "rpm_reader_static"),
+472:              shutil.which("rpm_reader_static")]
+728:        # tach average over the same window as the thrust average. A tach that
+731:        tach = None
+734:            tach = a["mean_rotor"] if a else None
+736:        auto_actual = tach if (tach is not None and tach > self.RPM_SPINNING) else None
+767:            "rpm_tach": f"{tach:.0f}" if tach is not None else "",
+782:            "rpm_tach": tach,
+788:                "rpm_source": "typed" if typed_actual is not None else ("tach" if auto_actual is not None else "none"),
+1152:    <div><label>RPM actual</label><input id="head_rpm_actual" inputmode="decimal" placeholder="auto from tach"></div>
+1385:    : ('reader down: '+(R.error||'')+'\n'+(R.selector?('tach '+R.selector):''));
+1558:    g = ap.add_argument_group("rpm tach (FT232H, rpm/rpm_reader_static)")
+1559:    g.add_argument("--no-rpm", action="store_true", help="do not start the tach reader")
+1560:    g.add_argument("--rpm-bin", help="path to rpm_reader_static (default: rpm/ beside tools/)")
+1561:    g.add_argument("--tach", default="0",
+1562:                   help="the FT232H: USB device index or USB serial (default 0). "
+1614:        rpm = RpmChannel(args.tach, rpm_bin, args.rpm_poles, rpm_cfg, args.rpm_window, rpm_log)
+1641:        print(f"          tach={args.tach}  poles={args.rpm_poles}  ratio={rpm_cfg.ratio:g}  "
+jonfarhat@Jons-iMac-Pro single % tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   tach = 0   (one tach board; serial is blank so this is the USB index and follows the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   tach    0
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --tach 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-28.1-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          tach=0  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+cd ../thrust-torque_deployed
+bash tools/start.sh
+^C
+stopped
+jonfarhat@Jons-iMac-Pro single % 
+jonfarhat@Jons-iMac-Pro single % 
+jonfarhat@Jons-iMac-Pro single % 
+jonfarhat@Jons-iMac-Pro single % 
+jonfarhat@Jons-iMac-Pro single % bash tools/stop.sh
+== killing stale live.py / bench.py / rpm_reader_static
+   none running
+
+== web ports (8000 is your video server; leave it alone)
+   8000  -> SecurityS pid 1786
+   8765  free
+   8766  free
+   8767  free
+
+== serial devices
+   /dev/cu.usbserial-1434110  free
+   /dev/cu.usbserial-14341440  free
+jonfarhat@Jons-iMac-Pro single % cd ../thrust-torque_deployed
+bash tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   PORT = 0   STBD = -   (only one tach board present, assigned to PORT; serials are blank so these are USB indices and follow the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/thrust-torque_deployed/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   rpm     port=0  stbd=-
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --rpm-port 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-26.2   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/thrust-torque_deployed/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/thrust-torque_deployed/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/thrust-torque_deployed/rpm/rpm_reader_static
+          port=0  stbd=1  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+layout    dual: port and stbd side by side
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+^C
+stopped
+jonfarhat@Jons-iMac-Pro thrust-torque_deployed % cd ..
+jonfarhat@Jons-iMac-Pro Thrust & Torque Stands % cd single
+jonfarhat@Jons-iMac-Pro single % tools/stop.sh
+== killing stale live.py / bench.py / rpm_reader_static
+   none running
+
+== web ports (8000 is your video server; leave it alone)
+   8000  -> SecurityS pid 1786
+   8765  free
+   8766  free
+   8767  free
+
+== serial devices
+   /dev/cu.usbserial-1434110  free
+   /dev/cu.usbserial-14341440  free
+jonfarhat@Jons-iMac-Pro single % start.sh
+zsh: command not found: start.sh
+jonfarhat@Jons-iMac-Pro single % tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   tach = 0   (one tach board; serial is blank so this is the USB index and follows the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   tach    0
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --tach 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-28.1-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          tach=0  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+^C
+stopped
+^C^C^C^C^C%                                                                                                                           jonfarhat@Jons-iMac-Pro single % tools/stop.sh
+== killing stale live.py / bench.py / rpm_reader_static
+   none running
+
+== web ports (8000 is your video server; leave it alone)
+   8000  -> SecurityS pid 1786
+   8765  free
+   8766  free
+   8767  free
+
+== serial devices
+   /dev/cu.usbserial-1434110  free
+   /dev/cu.usbserial-14341440  free
+jonfarhat@Jons-iMac-Pro single % tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   tach = 0   (one tach board; serial is blank so this is the USB index and follows the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   tach    0
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --tach 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-28.1-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          tach=0  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+^C  
+stopped
+jonfarhat@Jons-iMac-Pro single % tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   tach = 0   (one tach board; serial is blank so this is the USB index and follows the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   tach    0
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --tach 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-28.1-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          tach=0  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+^C
+stopped
+jonfarhat@Jons-iMac-Pro single % stop.sh
+zsh: command not found: stop.sh
+jonfarhat@Jons-iMac-Pro single % tools/stop.sh
+== killing stale live.py / bench.py / rpm_reader_static
+   none running
+
+== web ports (8000 is your video server; leave it alone)
+   8000  -> SecurityS pid 1786
+   8765  free
+   8766  free
+   8767  free
+
+== serial devices
+   /dev/cu.usbserial-1434110  free
+   /dev/cu.usbserial-14341440  free
+jonfarhat@Jons-iMac-Pro single % tools/start.sh
+== stopping anything stale
+   == killing stale live.py / bench.py / rpm_reader_static
+      none running
+   
+   == web ports (8000 is your video server; leave it alone)
+      8000  -> SecurityS pid 1786
+      8765  free
+      8766  free
+      8767  free
+   
+   == serial devices
+      /dev/cu.usbserial-1434110  free
+      /dev/cu.usbserial-14341440  free
+
+== probing boards (each Nano resets once, about 3 s each)
+== Nanos
+   /dev/cu.usbserial-1434110          thrust  # Nacelle Thrust Stand ready
+   /dev/cu.usbserial-14341440         power   # Nacelle Power Meter  ACS724 +-50A + divider  (A0/A1)
+== FT232H tach boards
+   index 0  serial   
+   tach = 0   (one tach board; serial is blank so this is the USB index and follows the hub socket)
+== wrote /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/ports.json
+
+== launching
+   thrust  /dev/cu.usbserial-1434110
+   power   /dev/cu.usbserial-14341440
+   tach    0
+   python3 live.py --open --port /dev/cu.usbserial-1434110 --power-port /dev/cu.usbserial-14341440 --tach 0 
+
+   DASHBOARD   http://localhost:8765
+               http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+   live.py prints the same link once it has bound the port; if 8765 is busy it
+   steps to the next one and that printed link is the one to use.  Ctrl-C here to stop.
+
+live.py   2026-10-28.1-single   /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/live.py
+port      /dev/cu.usbserial-1434110 @ 115200
+logs      /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/tools/logs
+rpm       /Users/jonfarhat/Documents/GitHub/RU3Y-Software/Thrust & Torque Stands/single/rpm/rpm_reader_static
+          tach=0  poles=28  ratio=3  window=0.05s
+power     /dev/cu.usbserial-14341440
+
+============================================================
+DASHBOARD   http://localhost:8765
+            http://192.168.1.121:8765   (iPad or any device on the LAN / VPN)
+============================================================
+ctrl-C to stop
+^C
+stopped
+jonfarhat@Jons-iMac-Pro single % 

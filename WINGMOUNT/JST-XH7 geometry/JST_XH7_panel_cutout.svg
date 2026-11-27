@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Panel cutout for JST XH 7-circuit SMD header (B7B/S7B-XH-SM4-TB), mating plug XHP-7.
+     Units: millimeters, 1:1. Canvas 40 x 24 mm, cutout centered at (20, 12).
+     Cutout: 20.5 x 6.4 mm, R0.5 corners = connector face 19.9 x 5.75 plus 0.3 mm clearance per side. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="24mm" viewBox="0 0 40 24">
+
+  <!-- CUT: the hole itself -->
+  <g id="cut" fill="none" stroke="#ff0000" stroke-width="0.1">
+    <rect x="9.75" y="8.8" width="20.5" height="6.4" rx="0.5" ry="0.5"/>
+  </g>
+
+  <!-- REFERENCE: delete this group before cutting -->
+  <g id="reference" fill="none" stroke="#0000ff" stroke-width="0.05">
+    <!-- connector face outline, 19.9 x 5.75 -->
+    <rect x="10.05" y="9.125" width="19.9" height="5.75" stroke-dasharray="0.4 0.3"/>
+    <!-- centerlines -->
+    <line x1="7" y1="12" x2="33" y2="12" stroke-dasharray="1 0.3 0.2 0.3"/>
+    <line x1="20" y1="6.5" x2="20" y2="17.5" stroke-dasharray="1 0.3 0.2 0.3"/>
+    <!-- 7 posts, 0.64 square, 2.5 pitch, 15.0 span -->
+    <g fill="#0000ff" stroke="none">
+      <rect x="12.18" y="11.68" width="0.64" height="0.64"/>
+      <rect x="14.68" y="11.68" width="0.64" height="0.64"/>
+      <rect x="17.18" y="11.68" width="0.64" height="0.64"/>
+      <rect x="19.68" y="11.68" width="0.64" height="0.64"/>
+      <rect x="22.18" y="11.68" width="0.64" height="0.64"/>
+      <rect x="24.68" y="11.68" width="0.64" height="0.64"/>
+      <rect x="27.18" y="11.68" width="0.64" height="0.64"/>
+    </g>
+    <g fill="#0000ff" stroke="none" font-family="sans-serif" font-size="1.2" text-anchor="middle">
+      <text x="20" y="5.2">CUT 20.5 x 6.4 mm, R0.5 (red)</text>
+      <text x="20" y="19.6">JST XH 7-circuit face 19.9 x 5.75 mm (dashed)</text>
+      <text x="20" y="21.4">posts 2.5 pitch, 15.0 span</text>
+    </g>
+  </g>
+</svg>

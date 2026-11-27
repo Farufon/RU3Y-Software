@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- JST XH 7-pin header, PCB parallel to a 3 mm wall. Drawn in px at 96 dpi so Fusion imports 1:1 in mm.
+     Red = wall cutout (21.60 base / 20.50 upper x 6.55 tall). Green = PCB pin holes, 1.0 dia, 2.5 pitch (on the PCB, shown for alignment). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="40.0mm" height="14.0mm" viewBox="0 0 151.1811 52.9134">
+  <path id="cut" d="M 34.7717,38.9291 L 116.4094,38.9291 L 116.4094,28.5354 L 114.3307,28.5354 L 114.3307,14.1732 L 36.8504,14.1732 L 36.8504,28.5354 L 34.7717,28.5354 Z" fill="none" stroke="#ff0000" stroke-width="0.4"/>
+  <g id="pcb_holes_reference" fill="none" stroke="#00a000" stroke-width="0.2">
+    <circle cx="47.2441" cy="36.9638" r="1.8898"/>
+    <circle cx="56.6929" cy="36.9638" r="1.8898"/>
+    <circle cx="66.1417" cy="36.9638" r="1.8898"/>
+    <circle cx="75.5906" cy="36.9638" r="1.8898"/>
+    <circle cx="85.0394" cy="36.9638" r="1.8898"/>
+    <circle cx="94.4882" cy="36.9638" r="1.8898"/>
+    <circle cx="103.9370" cy="36.9638" r="1.8898"/>
+  </g>
+</svg>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Cut-only panel cutout for JST XH 7-circuit header. Units mm, 1:1. Hole 20.5 x 6.4 mm, R0.5. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="24mm" viewBox="0 0 40 24">
+  <rect x="9.75" y="8.8" width="20.5" height="6.4" rx="0.5" ry="0.5" fill="none" stroke="#ff0000" stroke-width="0.1"/>
+</svg>
